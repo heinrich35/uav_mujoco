@@ -1,0 +1,19 @@
+Collecting git+https://github.com/DARcorporation/xfoil-python
+  Cloning https://github.com/DARcorporation/xfoil-python to /tmp/pip-req-build-2cq4se3v
+  Running command git clone --filter=blob:none --quiet https://github.com/DARcorporation/xfoil-python /tmp/pip-req-build-2cq4se3v
+  Resolved https://github.com/DARcorporation/xfoil-python to commit 0a8c2fce02ba73b7f89f72306e43d78291d1e024
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: numpy in /home/heinz/env_aero/lib/python3.12/site-packages (from xfoil==1.1.1) (2.5.3)
+Building wheels for collected packages: xfoil
+  Building wheel for xfoil (pyproject.toml): started
+  Building wheel for xfoil (pyproject.toml): finished with status 'done'
+  Created wheel for xfoil: filename=xfoil-1.1.1-cp312-cp312-linux_x86_64.whl size=287199 sha256=6ff5652aad87cb0618e6ea0f272716c5295bbd29728985591261dcbc0605a5ec
+  Stored in directory: /tmp/pip-ephem-wheel-cache-sr28g7v2/wheels/67/7d/30/6a1c4f7c5bcc9f0bc61d1ba4010f7a66d7bb68349e36204bb0
+Successfully built xfoil
+Installing collected packages: xfoil
+Successfully installed xfoil-1.1.1

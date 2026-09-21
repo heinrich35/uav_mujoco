@@ -1,0 +1,103 @@
+<mujoco model="uav_rail_scene_1">
+
+  <!-- ==============================================
+       Compiler & Options
+       ============================================== -->
+  <compiler angle="degree" eulerseq="xyz"
+             meshdir="/home/heinz/isaaclab_uav/assets"/>
+
+  <option timestep="0.005" gravity="0 0 -9.81"
+          impratio="20" tolerance="1e-8" ls_tolerance="1e-8"
+          noslip_tolerance="1e-8">
+    <flag contact="enable"/>
+  </option>
+
+  <!-- Soft contacts — damped collisions between rigid bodies.
+       rail_obj is a static body (no joints); its geom participates in
+       collision so the UAV can contact the rail surface.                  -->
+  <contact>
+    <pair name="uav_ground" geom1="ground" geom2="uav_body"
+          solref="0.01 0.9" solimp="0.95 0.99 0.001 0.5 2"
+          condim="3" friction="0.5 0.3 0.1"/>
+    <pair name="uav_rail_obj" geom1="rail_obj_geom" geom2="uav_body"
+          solref="0.01 0.9" solimp="0.95 0.99 0.001 0.5 2"
+          condim="3" friction="0.3 0.2 0.1"/>
+  </contact>
+
+  <visual>
+    <map stiffness="1000" fogstart="10" fogend="80"/>
+    <quality shadowsize="2048"/>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3"/>
+  </visual>
+
+  <!-- ==============================================
+       Assets: Meshes
+       ============================================== -->
+  <asset>
+    <!-- UAV collision/visual mesh -->
+    <mesh name="uav_mesh"
+          file="shahed-136/source/shahed_collision_0.stl"/>
+    <!-- Rail structure mesh — used for visual and collision on rail_obj -->
+    <mesh name="rail_mesh"
+          file="shahed-136/source/rail_collision.stl"/>
+  </asset>
+
+  <!-- ==============================================
+       World Body
+       ============================================== -->
+  <worldbody>
+
+    <!-- Ground plane (infinite flat plane at z=0) -->
+    <geom name="ground" type="plane" size="50 50 0.1" pos="0 0 0"
+          rgba="0.3 0.4 0.5 1"/>
+
+    <!-- Lighting -->
+    <light directional="true" diffuse="0.8 0.8 0.8" specular="0.2 0.2 0.2"
+           pos="5 5 10" dir="-0.5 -0.5 -1"/>
+
+    <!-- ==========================================
+         RAIL OBJECT (static, no joints)
+         Fixed rail structure with full collision
+         so the UAV can have rigid-body contact with it.
+         ========================================== -->
+    <body name="rail_obj" pos="0 0 0" quat="1 0 0 0">
+      <geom name="rail_obj_geom" type="mesh" mesh="rail_mesh"
+            rgba="0.25 0.30 0.35 0.25"
+            density="0"/>
+      <geom name="rail_obj_cube" type="box" size="0.3 0.3 0.3"
+            pos="-1.3 0 0.6" euler="0 -12.8 0"
+            rgba="0.8 0.3 0.1 1"
+            density="0"/>
+    </body>
+
+    <!-- ==========================================
+         UAV DRONE (fixed-wing, free-flying)
+         Initial pose:
+           pos  = (-0.2, 0, 1.00)
+           pitch = 12.8°
+         ========================================== -->
+    <body name="uav" pos="-0.2 0 1.0" euler="0 12.8 0">
+      <!-- 6-DoF free joint -->
+      <joint name="uav_joint" type="free"/>
+
+      <!-- Inertial: mass=200 kg, inertia from URDF -->
+      <inertial pos="0 0 0" mass="200" diaginertia="40 40 20"/>
+
+      <!-- UAV — full collision with everything (default contype/affinity).  -->
+      <geom name="uav_body" type="mesh" mesh="uav_mesh"
+            rgba="0.6 0.6 0.65 1"
+            density="0"/>
+
+    </body>
+
+  </worldbody>
+
+  <!-- ==============================================
+       Sensors
+       ============================================== -->
+  <sensor>
+    <!-- UAV body velocity -->
+    <framelinvel name="uav_vel" objtype="body" objname="uav"/>
+  </sensor>
+
+</mujoco>

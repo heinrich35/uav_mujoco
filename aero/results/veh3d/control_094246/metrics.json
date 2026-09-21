@@ -1,0 +1,10 @@
+{
+  "return_mean": 207.13989381285333,
+  "return_std": 8.461649783126612,
+  "speed_err_rms": 0.5007688032882058,
+  "lateral_rms": 0.339607376283773,
+  "yaw_rms_deg": 1.185146958031923,
+  "progress_mean": 31.395648216356456,
+  "train_seconds": 66.9,
+  "steps": 600000
+}

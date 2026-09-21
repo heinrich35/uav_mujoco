@@ -1,0 +1,168 @@
+# Parametric aerial vehicle — the design source of truth.
+#
+# Everything downstream (mesh, mass properties, aero, control env, slow design
+# loop) is REGENERATED from this file. Never hand-edit an exported STL — it is
+# a build artifact; change parameters here instead.
+#
+# slow_loop.ranges lists the (closed) min/max each sampled parameter may take.
+# Keys are dotted paths into this file (e.g. "geometry.span").
+
+meta:
+  name: veh0
+  version: 1
+
+geometry:
+  n_sections: 25        # span stations over the FULL span (odd -> one at root)
+  n_half: 30            # points per half-section (upper surface; lower mirrors)
+  span: 1.2             # [m] full tip-to-tip
+  root_chord: 0.35      # [m]
+  taper: 0.60           # tip_chord = root_chord * taper
+  sweep_deg: 8.0        # LE sweep: tip LE sits tan(sweep)*|y| AFT of root LE
+  thickness_root: 0.12  # t/c at root (NACA-style thickness distribution)
+  thickness_tip: 0.10   # t/c at tip, linear root->tip
+  twist_deg: -2.0       # washout, linear root->tip, rotated about quarter-chord
+  camber: 0.02          # parabolic camber, fraction of chord
+  dihedral_deg: 0.0     # tip rises tan(dihedral)*|y|
+
+material:
+  foam_density: 32.0    # [kg/m^3] lofted volume density
+  payload_mass: 0.15    # [kg] lumped at the CG, no extra inertia
+
+motors:
+  count: 3
+  motor_gap: 0.45       # [m] |y| of the outer motors; the middle one sits at y=0
+  x_frac: -0.40         # motor x as fraction of LOCAL chord, measured from LE
+                        #   (negative = aft = the back, -x side of the vehicle)
+  max_thrust: 0.70      # [N] per motor, full throttle
+  tau: 0.08             # [s] first-order spool lag
+
+aero:
+  rho: 1.225            # [kg/m^3]
+  cruise_speed: 8.0     # [m/s] the control target ("move forward x, constant")
+  cruise_alpha_deg: 3.0 # deck angle used for the section polar + lift gate
+  re_nu: 1.5e-5         # [m^2/s] kinematic viscosity for the section Re
+  cd_frontal: 0.55      # bluff-body drag coefficient on the frontal (y-z) area
+  cd_skin: 0.008        # equivalent skin friction on the wetted area
+  oswald_e: 0.80
+  cy_beta: 0.60         # side-force slope per radian of sideslip
+  cl_beta: 0.12         # weathervane MAGNITUDE: yaw toward the relative wind
+  cl_r: 0.50            # yaw-rate damping magnitude
+
+sim:
+  dt: 0.02              # [s] control @ 50 Hz
+  episode_s: 8.0
+  y_limit: 5.0          # [m] lateral out-of-bounds = crash
+  yaw_limit_deg: 90.0   # nose past perpendicular = crash
+
+reward:
+  w_alive: 1.0          # constant per-step bonus — surviving must out-earn
+                        #   any transient cost, else early crash is optimal
+  w_speed: 1.0          # -|u - cruise_speed|
+  w_side_vel: 0.50      # -|v|/vt  (lateral drift DRIVER, not just position)
+  w_lateral: 0.30       # -|y|
+  w_yaw: 0.10           # -|yaw|
+  w_effort: 0.05        # -sum(throttle_i^2)  (energy proxy -> favours low drag)
+  crash_penalty: 100.0  # >> one episode's best-case avoided cost (was 10:
+                        #   the policy learned crashing early SAVES penalty)
+
+flight:                 # 6-DOF flight-sim airframe constants (flight_sim.py);
+                        #   the design loop does not yet optimize these.
+                        #   ALL entries are positive MAGNITUDES; the restoring /
+                        #   damping signs live in flight_sim.aero_forces().
+                        #   BOUND: the rate-damping torques go through the
+                        #   explicit xfrc path, so coeff*dt/I must stay < 1 —
+                        #   with Iyy=0.0012 kg m^2 pitch is the stiff axis.
+  cm_alpha: 0.40        # pitch stiffness about the design cruise alpha
+  cm_q: 1.2             # pitch-rate damping (10.0 diverged at dt=4 ms)
+  cl_p: 0.50            # roll-rate damping
+  motor_thrust_total: 3.2  # [N] sim-world motor sizing (the design-loop 3-bank
+                        #   equivalent is count*max_thrust = 2.1 N — too weak to
+                        #   feel like "push forward": ~2.4 m/s^2 max excess)
+  col_map_mode: verbatim  # "verbatim": blend boxes used EXACTLY as authored
+                        #   (edit the blend, run the typed export, rerun the
+                        #   sim). "envelope": legacy auto-fit onto our airframe
+                        #   bbox (col_box_scale then applies).
+  col_box_scale: 5.0    # collision-box inflation (user spec: was 10, halved):
+                        #   non-wing boxes scale SIZE and POSITION by this
+                        #   factor about the vehicle origin -> a forgiving
+                        #   envelope beyond the visual airframe. The wing slab
+                        #   is EXEMPT (kept at airframe size/position, real
+                        #   span preserved). NOTE: landings rest on the
+                        #   inflated boxes, so the hull floats a few cm above
+                        #   the ground visually.
+  col_x_shift: 0.9      # [m] THE single dial: moves ALL collision boxes along
+  col_box_overrides: {} # per-box edits, keyed by box name (THE way to edit an
+                        #   individual box). Applied LAST, on top of scale and
+                        #   col_x_shift: "size" = HALF-extents [x y z] (MuJoCo
+                        #   convention), "pos" = box center in the vehicle
+                        #   frame BEFORE col_x_shift. Either or both, e.g.:
+                        #   veh_col_003: {size: [0.05, 0.05, 0.09]}
+                        #   veh_col_007: {pos: [-0.9, 0.0, 0.0],
+                        #                 size: [0.08, 0.05, 0.07]}
+                        # Workflow: read current values with --tree, edit here.
+                        #   x together (wing slab included). One value, whole
+                        #   cloud slides as one.
+
+flaps:                  # trailing-edge control surfaces (flight_sim.py).
+                        #   Each flap is a REAL body hinged to the wing
+                        #   (revolute joint, position actuator); its aero is
+                        #   computed from the flap's OWN angle of attack
+                        #   against the local airflow (incl. rotational flow
+                        #   at the hinge), not as a canned roll moment.
+  chord_frac: 0.25      # flap chord as fraction of the local wing chord
+  span_in_frac: 0.55    # inboard start of each flap, fraction of half-span
+  span_out_frac: 0.95   # outboard end
+  max_deflect_deg: 35   # actuator / ctrl range
+  turn_deflect_deg: 18  # 4/6 keys map full turn command to this deflection —
+                        #   sustained full-authority roll spirals (rate-only
+                        #   damping, no roll spring): pulse and center, like
+                        #   a real stick
+  elev_deflect_deg: 15  # 7/1 keys: SYMMETRIC flap deflection = elevator
+                        #   (7 = both TE-up = nose up), the missing pitch axis
+  cl_alpha: 5.0         # low-AR thin-surface lift slope [1/rad]
+  cl_max: 1.1           # soft |CL| cap on the flap surface
+  cd0: 0.06             # profile drag of the deflected surface
+  mass: 0.012           # kg per flap link
+  kp: 0.60              # position-actuator stiffness [N m/rad]
+  damping: 0.004        # hinge joint damping [N m s/rad]
+
+brakes:                 # split airbrake: two plates on the wing spine flanking
+                        #   the CG, hinged to fold UP into the airflow (9 =
+                        #   toggle). Mounted at the CG x -> drag, no pitch
+                        #   moment. Same local-AoA plate aero as the flaps.
+  chord: 0.07
+  span: 0.14            # each plate; two plates = 0.0196 m^2 total
+  y_offset: 0.06        # plates flank the spine
+  z_mount: 0.036        # closed: clear of the hull skin (grazing it
+                        #   produced permanent contacts)
+  max_deg: 70
+  mass: 0.008
+  cl_alpha: 5.0
+  cl_max: 1.5           # flat plate stalls high
+  cd0: 0.08
+  kp: 0.8
+  damping: 0.004
+
+train_control:
+  algo: ppo
+  steps: 600000         # 300k plateaued below the PD floor; 600k clears it
+  n_envs: 4             # keep < cores/2 while the GPU training job is live
+  seed: 0
+
+slow_loop:
+  n_designs: 6
+  seed: 0
+  sample: random        # uniform in each range below
+  steps_per_design: 100000
+  n_envs: 4
+  eval_episodes: 5
+  # Closed ranges the slow loop may sample. Dotted paths into this file.
+  ranges:
+    geometry.span:            [0.8, 1.8]
+    geometry.taper:           [0.40, 1.00]
+    geometry.sweep_deg:       [0.0, 20.0]
+    geometry.thickness_root:  [0.08, 0.16]
+    geometry.camber:          [0.00, 0.05]
+    motors.motor_gap:         [0.15, 0.55]
+    aero.cruise_alpha_deg:    [1.0, 5.0]   # trim alpha is a design OUTCOME:
+                                           # low -> lift gate, high -> thrust gate

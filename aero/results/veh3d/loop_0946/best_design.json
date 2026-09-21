@@ -1,0 +1,52 @@
+{
+  "idx": 3,
+  "theta": {
+    "geometry.span": 1.0997118905373848,
+    "geometry.taper": 0.6536123327185951,
+    "geometry.sweep_deg": 0.5663934229092593,
+    "geometry.thickness_root": 0.08994266211996511,
+    "geometry.camber": 0.03353122073468152,
+    "motors.motor_gap": 0.4088758046297001
+  },
+  "metrics": {
+    "return_mean": -248.95113854245884,
+    "return_std": 139.21387410040458,
+    "speed_err_rms": 0.8879289314329342,
+    "lateral_rms": 2.267826914602599,
+    "yaw_rms_deg": 3.7607592739191227,
+    "progress_mean": 65.0262561245228,
+    "episodes_survived": 2,
+    "train_seconds": 11.9,
+    "steps": 100000
+  },
+  "geometry": {
+    "mass": 0.3416,
+    "S_ref": 0.3182,
+    "A_front": 0.03447,
+    "AR": 3.8,
+    "CD0": 0.076,
+    "CL_c": 0.757,
+    "lift_N": 9.44,
+    "drag_N": 1.7
+  },
+  "cfg_geometry": {
+    "n_sections": 25,
+    "n_half": 30,
+    "span": 1.0997118905373848,
+    "root_chord": 0.35,
+    "taper": 0.6536123327185951,
+    "sweep_deg": 0.5663934229092593,
+    "thickness_root": 0.08994266211996511,
+    "thickness_tip": 0.1,
+    "twist_deg": -2.0,
+    "camber": 0.03353122073468152,
+    "dihedral_deg": 0.0
+  },
+  "cfg_motors": {
+    "count": 3,
+    "motor_gap": 0.4088758046297001,
+    "x_frac": -0.4,
+    "max_thrust": 0.7,
+    "tau": 0.08
+  }
+}

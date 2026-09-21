@@ -1,0 +1,16 @@
+# heavy / regenerable
+outputs/
+stage2_dataset/
+runs/
+logs/
+shadercache/
+nv_shadercache/
+__pycache__/
+*.pyc
+*.bak
+MUJOCO_LOG.TXT
+nohup.out
+*.pre_col.bak
+*.pre_rename.bak
+# blend backups
+*.blend1

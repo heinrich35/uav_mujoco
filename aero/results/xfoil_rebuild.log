@@ -1,0 +1,19 @@
+Processing /home/heinz/src/xfoil-python
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: xfoil
+  Building wheel for xfoil (pyproject.toml): started
+  Building wheel for xfoil (pyproject.toml): finished with status 'done'
+  Created wheel for xfoil: filename=xfoil-1.1.1-cp312-cp312-linux_x86_64.whl size=278705 sha256=8892a5e78bd654db493c46f5cc79c5b3ba7e5146301136a4f6be584a2c9436e8
+  Stored in directory: /tmp/pip-ephem-wheel-cache-o3wwerae/wheels/00/4e/4c/76225ad1ae87e8b99f802050a21bc91bbbd942107f8d479630
+Successfully built xfoil
+Installing collected packages: xfoil
+  Attempting uninstall: xfoil
+    Found existing installation: xfoil 1.1.1
+    Uninstalling xfoil-1.1.1:
+      Successfully uninstalled xfoil-1.1.1
+Successfully installed xfoil-1.1.1

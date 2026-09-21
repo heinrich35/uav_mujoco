@@ -1,0 +1,169 @@
+<mujoco model="uav_rail_scene">
+
+  <!-- ==============================================
+       Compiler & Options
+       ============================================== -->
+  <compiler angle="degree" eulerseq="xyz"
+             meshdir="/home/heinz/isaaclab_uav/assets"/>
+
+  <option timestep="0.005" gravity="0 0 -9.81"
+          impratio="20" tolerance="1e-8" ls_tolerance="1e-8"
+          noslip_tolerance="1e-8">
+    <flag contact="enable"/>
+  </option>
+
+  <!-- Soft contacts — damped collisions between rigid bodies.
+       Cart stays non-collidable (contype=0 on its geoms) since the
+       prismatic joint already handles its motion along the rail.    -->
+  <contact>
+    <pair name="uav_ground" geom1="ground" geom2="uav_body"
+          solref="0.01 0.9" solimp="0.95 0.99 0.001 0.5 2"
+          condim="3" friction="0.5 0.3 0.1"/>
+    <!-- NOTE: no uav_rail pair.  The rail mesh encloses the UAV's start pose
+         (12 cm penetration), so a rail/UAV contact pair blasts the airframe
+         backwards off the cart before the launch even begins.  base_geom is
+         visual-only (contype=0) and must stay contact-free with the UAV.    -->
+    <pair name="uav_cart" geom1="cart_geom" geom2="uav_body"
+          solref="0.01 0.9" solimp="0.95 0.99 0.001 0.5 2"
+          condim="3" friction="0 0 0"/>
+    <!-- friction=0: while cradled the hulls sit in contact; any friction here
+         turns a weld-target mismatch into a stick-slip brake that can absorb
+         the entire 6.5 kN launch force.  A launch cradle clamps, it doesn't
+         rely on friction. -->
+  </contact>
+
+  <visual>
+    <map stiffness="1000" fogstart="10" fogend="80"/>
+    <quality shadowsize="2048"/>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3"/>
+  </visual>
+
+  <!-- ==============================================
+       Assets: Meshes
+       ============================================== -->
+  <asset>
+    <!-- UAV collision/visual mesh -->
+    <mesh name="uav_mesh"
+          file="shahed-136/source/shahed_collision_2.stl"/>
+    <!-- Rail structure mesh -->
+    <mesh name="rail_mesh"
+          file="shahed-136/source/rail_collision.stl"/>
+    <!-- Launch cart mesh -->
+    <mesh name="cart_mesh"
+          file="shahed-136/source/launch_cart.stl"/>
+  </asset>
+
+  <!-- ==============================================
+       World Body
+       ============================================== -->
+  <worldbody>
+
+    <!-- Ground plane (infinite flat plane at z=0) -->
+    <geom name="ground" type="plane" size="50 50 0.1" pos="0 0 0"
+          rgba="0.3 0.4 0.5 1"/>
+
+    <!-- Lighting -->
+    <light directional="true" diffuse="0.8 0.8 0.8" specular="0.2 0.2 0.2"
+           pos="5 5 10" dir="-0.5 -0.5 -1"/>
+
+    <!-- ==========================================
+         RAIL ROBOT
+         Chain:  base_link → rail_link → rail_joint → launch_cart
+
+         rail_link  — fixed, tilted -78.5° about Y at (-0.65,0,0.71).
+                       Provides the inclined reference frame.
+         rail_joint — prismatic slide along rail_link's local +X
+                       (which points mostly +Z in world: the rail tilt).
+         launch_cart — slides along the joint; upright (no rotation).
+         ========================================== -->
+    <body name="base_link" pos="0 0 0" quat="1 0 0 0">
+      <!-- Rail structure — visual only.  The rail mesh encloses both the
+           cart and UAV at their initial poses; enabling collisions here
+           would produce MN-level contact forces from deep penetration.    -->
+      <geom name="base_geom" type="mesh" mesh="rail_mesh"
+            rgba="0.25 0.30 0.35 0.25"
+            density="0"
+            contype="0" conaffinity="0"/>
+
+      <!-- Tilted intermediate body — provides the inclined joint frame.
+           euler="0 -78.5 0" → local +X ≈ (0.20, 0, 0.98) in world (upward) -->
+      <body name="rail_link" pos="-0.65 0 0.71" euler="0 -11.5 0">
+
+        <!-- Launch cart — slides along rail_link's local +X                 -->
+        <body name="launch_cart" pos="0 0 0" euler="0 0 0">
+          <joint name="rail_joint" type="slide" axis="1 0 0"
+                 limited="true" range="0 2"
+                 damping="5" stiffness="10"
+                 armature="0.01"/>
+          <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.02"/>
+
+          <!-- Cart — collides with UAV + rail. Joint constraint keeps it
+               on track; soft contacts prevent jamming.                       -->
+          <geom name="cart_geom" type="mesh" mesh="cart_mesh"
+                rgba="1.0 0.4 0.1 1"
+                density="0"/>
+
+        </body>
+      </body>
+    </body>
+
+    <!-- ==========================================
+         UAV DRONE (fixed-wing, free-flying)
+         Initial pose:
+           pos  = (-0.2, 0, 1.00)
+           pitch = 12.8°
+         ========================================== -->
+    <body name="uav" pos="-0.2 0 1.00" euler="0 12.8 0">
+      <!-- 6-DoF free joint -->
+      <joint name="uav_joint" type="free"/>
+
+      <!-- Inertial: mass=200 kg, inertia from URDF -->
+      <inertial pos="0 0 0" mass="200" diaginertia="40 40 20"/>
+
+      <!-- UAV — full collision with everything (default contype/affinity).  -->
+      <geom name="uav_body" type="mesh" mesh="uav_mesh"
+            rgba="0.6 0.6 0.65 1"
+            density="0"/>
+
+    </body>
+
+  </worldbody>
+
+  <!-- ==============================================
+       Equality: launch cradle
+       ============================================== -->
+  <equality>
+    <!-- Rigidly couples the UAV to the cart during the rail stroke so the
+         motor force accelerates the full 205 kg (cart + UAV) instead of a
+         5 kg cart hammering the airframe through mesh-mesh contact.
+         uav_sim.py rewrites eq_data with the UAV's current relative pose each
+         time it engages the cradle (so the constraint is exactly satisfied at
+         engage, no snap) and clears data.eq_active at the end of the stroke
+         so the UAV departs with the cart's momentum. -->
+    <weld name="uav_cradle" body1="launch_cart" body2="uav"/>
+  </equality>
+
+  <!-- ==============================================
+       Actuators
+       ============================================== -->
+  <actuator>
+    <!-- Rail launch motor: force-controlled via data.ctrl.
+         ctrl is CLAMPED to ctrlrange — the old -500/500 range silently
+         capped the launch force at 500 N (barely above the ~400 N gravity
+         load on the 11.5 deg slope).  Sized for a 6.5 kN launch. -->
+    <motor name="rail_motor" joint="rail_joint" gear="1"
+           ctrlrange="-20000 20000"/>
+  </actuator>
+
+  <!-- ==============================================
+       Sensors
+       ============================================== -->
+  <sensor>
+    <!-- UAV body velocity -->
+    <framelinvel name="uav_vel" objtype="body" objname="uav"/>
+    <!-- Rail joint position & velocity -->
+    <jointpos name="rail_pos" joint="rail_joint"/>
+    <jointvel name="rail_vel" joint="rail_joint"/>
+  </sensor>
+
+</mujoco>

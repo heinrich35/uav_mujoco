@@ -1,0 +1,711 @@
+#!/usr/bin/env python3
+"""
+MuJoCo UAV Aerodynamics Simulation with Keyboard Controls.
+
+A fixed-wing UAV (Shahed-136 model) flies in a MuJoCo physics environment
+with ground plane, aerodynamic forces (drag, lift, rotational damping), and
+a static rail object (rail_obj) with full collision.
+
+Controls
+--------
+  0      Stop motor (cut thrust)                    (numpad OK)
+  5      Toggle motor (continuous +X thrust)        (numpad OK)
+  4 / 6  Left / right flap turn                     (numpad OK)
+  7 / 9  Flap magnitude ↓ / ↑                       (numpad OK)
+  + / -  Force multiplier ↑ / ↓                     (numpad OK)
+  R      Reset UAV to initial pose
+  ESC    Exit
+  ------  built-in MuJoCo viewer shortcuts ------
+  Tab    Toggle info overlay
+  F1     Toggle left  UI panel   (for more view space)
+  F2     Toggle right UI panel   (for more view space)
+
+Aerodynamic Model
+-----------------
+  - Quadratic body-axis drag with per-axis coefficients
+  - Lift proportional to forward velocity squared in body +Z
+  - Rotational damping (angular velocity damping in body frame)
+  - Flap forces: asymmetric vertical forces at wing positions
+    (-1, ±1, 0) body-frame, proportional to dynamic pressure,
+    flap deflection, and flap magnitude setting
+"""
+
+from __future__ import annotations
+
+import argparse
+import math
+import queue
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional, Tuple
+
+import glfw as _glfw
+import mujoco
+import mujoco.viewer
+import numpy as np
+
+# ---------------------------------------------------------------------------
+# Default paths
+# ---------------------------------------------------------------------------
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_DEFAULT_XML_PATH = str(_SCRIPT_DIR / "uav_rail_scene_1.xml")
+
+# ---------------------------------------------------------------------------
+# Runtime configuration
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SimConfig:
+    """All tunable simulation parameters gathered from CLI arguments."""
+
+    # -- model ----------------------------------------------------------------
+    xml_path: str = _DEFAULT_XML_PATH
+
+    # -- initial pose ---------------------------------------------------------
+    init_pos: Tuple[float, float, float] = (-0.0, 0.0, 1.0)
+    init_pitch_deg: float = -12.8
+
+    # -- physics --------------------------------------------------------------
+    timestep: float = 0.005
+    gravity: float = 9.81  # m/s² in -Z
+
+    # -- key forces -----------------------------------------------------------
+    force_nose_x: float = 10000.0 # N, key-5 continuous +X thrust at nose
+    nose_offset: Tuple[float, float, float] = (-0.8, 0.0, 0.0)
+
+    # -- aerodynamics (body-frame) --------------------------------------------
+    k_drag: Tuple[float, float, float] = (5.0, 30.0, 60.0)
+    k_lift: float = 40.0
+    k_rot_damp: Tuple[float, float, float] = (300.0, 300.0, 150.0)
+
+    # -- flaps ----------------------------------------------------------------
+    flap_k: float = 40.0                        # flap force coefficient
+    flap_init_magnitude: float = 1.0            # initial flap magnitude (keys 7/9)
+    flap_pos_right: Tuple[float, float, float] = (-1.0, 1.0, 0.0)   # body frame
+    flap_pos_left: Tuple[float, float, float] = (-1.0, -1.0, 0.0)   # body frame
+
+    # -- force scaling --------------------------------------------------------
+    force_init_multiplier: float = 1.0          # initial key-force multiplier (+/-)
+
+    # -- viewer ---------------------------------------------------------------
+    hide_ui: bool = True                        # start with UI panels hidden
+
+    @property
+    def init_pitch_rad(self) -> float:
+        return math.radians(self.init_pitch_deg)
+
+    @property
+    def init_quat(self) -> np.ndarray:
+        """[qw, qx, qy, qz] for roll=0, pitch, yaw=0."""
+        cp2 = math.cos(self.init_pitch_rad / 2.0)
+        sp2 = math.sin(self.init_pitch_rad / 2.0)
+        return np.array([cp2, 0.0, sp2, 0.0])
+
+    @property
+    def init_qpos(self) -> np.ndarray:
+        """Full qpos vector: [x, y, z, qw, qx, qy, qz]."""
+        q = self.init_quat
+        return np.array([
+            self.init_pos[0], self.init_pos[1], self.init_pos[2],
+            q[0], q[1], q[2], q[3],
+        ])
+
+
+# ---------------------------------------------------------------------------
+# CLI argument parser
+# ---------------------------------------------------------------------------
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="uav_sim_1.py",
+        description="MuJoCo fixed-wing UAV simulation with keyboard controls.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples
+--------
+  # Default settings
+  python uav_sim_1.py
+
+  # Custom initial pose (z=5 m, pitch=5°)
+  python uav_sim_1.py --pos-z 5.0 --pitch 5.0
+
+  # Stronger motor thrust
+  python uav_sim_1.py --force-nose 3000
+
+  # Different aerodynamic profile (high drag)
+  python uav_sim_1.py --drag 10 50 100 --lift 20
+
+  # Double the physics rate
+  python uav_sim_1.py --timestep 0.0025
+
+Controls in-sim
+---------------
+  0       stop motor (cut thrust)         (numpad OK)
+  5       toggle motor (continuous +X)    (numpad OK)
+  4/6     left / right flap turn        (numpad OK)
+  7/9     flap magnitude ↓/↑            (numpad OK)
+  +/-     force multiplier ↑/↓          (numpad OK)
+  R       reset to initial pose
+  F1      toggle left  UI panel         (built-in viewer)
+  F2      toggle right UI panel         (built-in viewer)
+  Tab     toggle info overlay           (built-in viewer)
+  ESC     exit
+""",
+    )
+
+    # ---- model ------------------------------------------------------------
+    p.add_argument(
+        "--model", metavar="PATH", default=_DEFAULT_XML_PATH,
+        help="Path to MJCF model XML (default: %(default)s)",
+    )
+
+    # ---- initial pose -----------------------------------------------------
+    g_pose = p.add_argument_group("Initial Pose")
+    g_pose.add_argument("--pos-x", type=float, default=None, metavar="X",
+                        help="Initial X position [m]")
+    g_pose.add_argument("--pos-y", type=float, default=None, metavar="Y",
+                        help="Initial Y position [m]")
+    g_pose.add_argument("--pos-z", type=float, default=None, metavar="Z",
+                        help="Initial Z position [m]")
+    g_pose.add_argument("--pitch", type=float, default=None, metavar="DEG",
+                        help="Initial pitch angle [deg]")
+
+    # ---- physics ----------------------------------------------------------
+    g_phys = p.add_argument_group("Physics")
+    g_phys.add_argument("--timestep", type=float, default=0.005, metavar="DT",
+                        help="Simulation timestep [s] (default: 0.005)")
+    g_phys.add_argument("--gravity", type=float, default=9.81, metavar="G",
+                        help="Gravity magnitude [m/s²] in -Z (default: 9.81)")
+
+    # ---- key forces -------------------------------------------------------
+    g_forces = p.add_argument_group("Key Forces")
+    g_forces.add_argument("--force-nose", type=float, default=10000.0, metavar="N",
+                          help="Key-5 continuous +X thrust at nose [N] (default: 10000)")
+
+    # ---- aerodynamics -----------------------------------------------------
+    g_aero = p.add_argument_group("Aerodynamics (body-frame)")
+    g_aero.add_argument(
+        "--drag", type=float, nargs=3, default=[5.0, 30.0, 60.0],
+        metavar=("KX", "KY", "KZ"),
+        help="Quadratic drag coefficients k_drag_%%(metavar)s "
+             "(default: 5 30 60).  F_i = -k_i * v_i * |v_i|",
+    )
+    g_aero.add_argument(
+        "--lift", type=float, default=40.0, metavar="KL",
+        help="Lift coefficient (default: 40).  F_z_body += KL * v_x * |v_x|",
+    )
+    g_aero.add_argument(
+        "--rot-damp", type=float, nargs=3, default=[300.0, 300.0, 150.0],
+        metavar=("KRX", "KRY", "KRZ"),
+        help="Rotational damping coefficients (default: 300 300 150).  "
+             "tau_i = -k_i * omega_i",
+    )
+
+    # ---- flaps -------------------------------------------------------------
+    g_flaps = p.add_argument_group("Flaps")
+    g_flaps.add_argument(
+        "--flap-k", type=float, default=40.0, metavar="KF",
+        help="Flap force coefficient (default: 40).  "
+             "F_flap = KF * mag * v_x * |v_x|",
+    )
+    g_flaps.add_argument(
+        "--flap-mag", type=float, default=1.0, metavar="M",
+        help="Initial flap magnitude (default: 1.0).  Adjust in-sim with 7/9.",
+    )
+
+    # ---- force scaling -----------------------------------------------------
+    g_fscale = p.add_argument_group("Force Scaling")
+    g_fscale.add_argument(
+        "--force-mult", type=float, default=1.0, metavar="FM",
+        help="Initial key-force multiplier (default: 1.0).  Adjust in-sim with +/-.",
+    )
+
+    # ---- viewer ------------------------------------------------------------
+    g_view = p.add_argument_group("Viewer")
+    g_view.add_argument(
+        "--show-ui", action="store_true", default=False,
+        help="Show MuJoCo UI panels at start.  "
+             "(They are hidden by default; press Tab/F1/F2 to toggle.)",
+    )
+
+    return p
+
+
+def _args_to_config(args: argparse.Namespace) -> SimConfig:
+    """Convert parsed CLI args to a SimConfig instance.
+
+    Uses SimConfig defaults as fallback; CLI arguments only override
+    when explicitly provided (i.e. not None).  This way editing
+    ``init_pos`` / ``init_pitch_deg`` in the SimConfig dataclass is
+    sufficient — no need to keep argparse defaults in sync.
+    """
+    defaults = SimConfig()
+    return SimConfig(
+        xml_path=args.model,
+        init_pos=(
+            args.pos_x if args.pos_x is not None else defaults.init_pos[0],
+            args.pos_y if args.pos_y is not None else defaults.init_pos[1],
+            args.pos_z if args.pos_z is not None else defaults.init_pos[2],
+        ),
+        init_pitch_deg=(args.pitch if args.pitch is not None
+                        else defaults.init_pitch_deg),
+        timestep=args.timestep,
+        gravity=args.gravity,
+        force_nose_x=args.force_nose,
+        k_drag=tuple(args.drag),
+        k_lift=args.lift,
+        k_rot_damp=tuple(args.rot_damp),
+        flap_k=args.flap_k,
+        flap_init_magnitude=args.flap_mag,
+        force_init_multiplier=args.force_mult,
+        hide_ui=not args.show_ui,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Key Queue  (thread-safe bridge between viewer thread and physics thread)
+# ---------------------------------------------------------------------------
+_key_queue: queue.Queue[int] = queue.Queue()
+
+# ---------------------------------------------------------------------------
+# Saved Initial State  (for reset)
+# ---------------------------------------------------------------------------
+_initial_qpos: np.ndarray | None = None
+_initial_qvel: np.ndarray | None = None
+
+# ---------------------------------------------------------------------------
+# Runtime config (set in main())
+# ---------------------------------------------------------------------------
+_cfg: Optional[SimConfig] = None
+
+# ---------------------------------------------------------------------------
+# Runtime mutable state  (adjusted by key presses during simulation)
+# ---------------------------------------------------------------------------
+_flap_mode: str = "neutral"       # "neutral" | "left" | "right"
+_flap_magnitude: float = 1.0      # flap effect strength (keys 7 / 9)
+_force_multiplier: float = 1.0    # key-force scaling (keys + / -)
+_motor_on: bool = False           # continuous nose +X thrust (key 5 on, key 0 off)
+
+_FLAP_MAG_STEP: float = 0.25      # increment per key-7/9 press
+_FORCE_MULT_STEP: float = 0.5     # increment per key-+/- press
+_FLAP_MAG_MIN: float = 0.0
+_FLAP_MAG_MAX: float = 10.0
+_FORCE_MULT_MIN: float = 0.0
+_FORCE_MULT_MAX: float = 20.0
+
+# ---------------------------------------------------------------------------
+# Key-group constants  (top-row + numpad for each action key)
+# ---------------------------------------------------------------------------
+_KEY_0 = frozenset({_glfw.KEY_0, _glfw.KEY_KP_0})
+_KEY_4 = frozenset({_glfw.KEY_4, _glfw.KEY_KP_4})
+_KEY_5 = frozenset({_glfw.KEY_5, _glfw.KEY_KP_5})
+_KEY_6 = frozenset({_glfw.KEY_6, _glfw.KEY_KP_6})
+_KEY_7 = frozenset({_glfw.KEY_7, _glfw.KEY_KP_7})
+_KEY_9 = frozenset({_glfw.KEY_9, _glfw.KEY_KP_9})
+_KEY_R = frozenset({_glfw.KEY_R})
+_KEY_PLUS  = frozenset({_glfw.KEY_EQUAL, _glfw.KEY_KP_ADD})
+_KEY_MINUS = frozenset({_glfw.KEY_MINUS, _glfw.KEY_KP_SUBTRACT})
+
+# Keys that the MuJoCo viewer handles natively (skip in our handler):
+#   Tab  — toggle info overlay          F1  — toggle left  UI panel
+#   F2   — toggle right UI panel
+_VIEWER_KEYS = frozenset({
+    _glfw.KEY_TAB,
+    _glfw.KEY_F1,
+    _glfw.KEY_F2,
+    _glfw.KEY_ESCAPE,
+})
+
+# ---------------------------------------------------------------------------
+# Aerodynamic Passive-Force Callback
+# ---------------------------------------------------------------------------
+
+
+def _aero_passive_callback(
+    model: mujoco.MjModel, data: mujoco.MjData
+) -> None:
+    """Compute aerodynamic forces (drag, lift, rot-damp, flaps) + add to qfrc_passive."""
+    cfg = _cfg
+    assert cfg is not None
+
+    body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "uav")
+    if body_id < 0:
+        return
+
+    # Body-frame velocities (use joint DOF address — not hardcoded)
+    jnt_adr = model.body_dofadr[body_id]
+    v_world = data.qvel[jnt_adr : jnt_adr + 3].copy()
+    w_body  = data.qvel[jnt_adr + 3 : jnt_adr + 6].copy()
+
+    body_quat  = data.qpos[jnt_adr + 3 : jnt_adr + 7].copy()
+    body_quatc = np.array([body_quat[0], -body_quat[1],
+                           -body_quat[2], -body_quat[3]])
+    v_body = np.zeros(3, dtype=np.float64)
+    mujoco.mju_rotVecQuat(v_body, v_world, body_quatc)
+
+    # ---- drag ---------------------------------------------------------------
+    force_body = np.zeros(3, dtype=np.float64)
+    for i in range(3):
+        force_body[i] = -cfg.k_drag[i] * v_body[i] * abs(v_body[i])
+
+    # ---- lift ---------------------------------------------------------------
+    force_body[2] += cfg.k_lift * v_body[0] * abs(v_body[0])
+
+    # ---- rotational damping -------------------------------------------------
+    torque_body = np.zeros(3, dtype=np.float64)
+    for i in range(3):
+        torque_body[i] = -cfg.k_rot_damp[i] * w_body[i]
+
+    # ---- flap forces --------------------------------------------------------
+    # Flaps generate vertical (body ±Z) forces at offset positions.
+    # Dynamic pressure ~ v_x * |v_x|.
+    # Left turn  (key 4): right flap ↓, left flap ↑  →  roll left
+    # Right turn (key 6): right flap ↑, left flap ↓  →  roll right
+    if _flap_mode != "neutral":
+        q_dyn = v_body[0] * abs(v_body[0])  # forward dynamic pressure
+        if q_dyn > 0.01:  # only apply at meaningful forward speed
+            if _flap_mode == "left":
+                sign_right = -1.0  # right flap down
+                sign_left  = +1.0  # left  flap up
+            else:  # "right"
+                sign_right = +1.0
+                sign_left  = -1.0
+
+            f_mag = cfg.flap_k * _flap_magnitude * q_dyn
+
+            for sign, pos in [(sign_right, cfg.flap_pos_right),
+                              (sign_left,  cfg.flap_pos_left)]:
+                f_body = np.array([0.0, 0.0, sign * f_mag], dtype=np.float64)
+                tau_flap_body = np.cross(pos, f_body)
+
+                force_body += f_body
+                torque_body += tau_flap_body
+
+    # ---- rotate body-frame force / torque → world frame ---------------------
+    force_world = np.zeros(3, dtype=np.float64)
+    mujoco.mju_rotVecQuat(force_world, force_body, body_quat)
+    torque_world = np.zeros(3, dtype=np.float64)
+    mujoco.mju_rotVecQuat(torque_world, torque_body, body_quat)
+
+    # ---- add to generalized passive forces ----------------------------------
+    data.qfrc_passive[jnt_adr : jnt_adr + 3] += force_world
+    data.qfrc_passive[jnt_adr + 3 : jnt_adr + 6] += torque_world
+
+
+# ---------------------------------------------------------------------------
+# Key Callback  (runs in viewer / GLFW thread)
+# ---------------------------------------------------------------------------
+
+
+def _key_callback(key: int) -> None:
+    """Enqueue key-code for processing by the physics thread."""
+    _key_queue.put(key)
+
+
+# ---------------------------------------------------------------------------
+# Key-Action Handler  (runs in physics thread)
+# ---------------------------------------------------------------------------
+
+
+def _apply_key_action(model: mujoco.MjModel, data: mujoco.MjData, key: int) -> None:
+    global _flap_mode, _flap_magnitude, _force_multiplier, _motor_on
+    cfg = _cfg
+    assert cfg is not None
+
+    body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "uav")
+    if body_id < 0:
+        return
+
+    # Don't process keys the viewer handles natively (Tab, F1, F2, Space …).
+    # These are consumed by the viewer's own GLFW callback.
+    if key in _VIEWER_KEYS:
+        return
+
+    # ---- motor toggle --------------------------------------------------------
+
+    if key in _KEY_0:
+        _motor_on = False
+        _log("KEY 0  |  Motor OFF  (thrust cut)")
+
+    elif key in _KEY_5:
+        _motor_on = not _motor_on
+        state = "ON" if _motor_on else "OFF"
+        fx = cfg.force_nose_x * _force_multiplier
+        _log(f"KEY 5  |  Motor {state}  "
+             f"({fx:.0f} N continuous +X @ nose  ×{_force_multiplier:.1f})")
+
+    # ---- flap controls ------------------------------------------------------
+
+    elif key in _KEY_4:
+        if _flap_mode == "left":
+            _flap_mode = "neutral"
+            _log("KEY 4  |  Flaps OFF  (neutral)")
+        else:
+            _flap_mode = "left"
+            _log(f"KEY 4  |  Flaps LEFT turn  (mag={_flap_magnitude:.2f})")
+
+    elif key in _KEY_6:
+        if _flap_mode == "right":
+            _flap_mode = "neutral"
+            _log("KEY 6  |  Flaps OFF  (neutral)")
+        else:
+            _flap_mode = "right"
+            _log(f"KEY 6  |  Flaps RIGHT turn  (mag={_flap_magnitude:.2f})")
+
+    # ---- flap magnitude -----------------------------------------------------
+
+    elif key in _KEY_9:
+        _flap_magnitude = min(_flap_magnitude + _FLAP_MAG_STEP, _FLAP_MAG_MAX)
+        _log(f"KEY 9  |  Flap magnitude ↑  →  {_flap_magnitude:.2f} "
+             f"(range [{_FLAP_MAG_MIN:.1f}–{_FLAP_MAG_MAX:.1f}])")
+
+    elif key in _KEY_7:
+        _flap_magnitude = max(_flap_magnitude - _FLAP_MAG_STEP, _FLAP_MAG_MIN)
+        _log(f"KEY 7  |  Flap magnitude ↓  →  {_flap_magnitude:.2f} "
+             f"(range [{_FLAP_MAG_MIN:.1f}–{_FLAP_MAG_MAX:.1f}])")
+
+    # ---- force multiplier ---------------------------------------------------
+
+    elif key in _KEY_PLUS:
+        _force_multiplier = min(_force_multiplier + _FORCE_MULT_STEP, _FORCE_MULT_MAX)
+        _log(f"KEY +  |  Force multiplier ↑  →  ×{_force_multiplier:.1f} "
+             f"(range [×{_FORCE_MULT_MIN:.1f}–×{_FORCE_MULT_MAX:.1f}])")
+
+    elif key in _KEY_MINUS:
+        _force_multiplier = max(_force_multiplier - _FORCE_MULT_STEP, _FORCE_MULT_MIN)
+        _log(f"KEY -  |  Force multiplier ↓  →  ×{_force_multiplier:.1f} "
+             f"(range [×{_FORCE_MULT_MIN:.1f}–×{_FORCE_MULT_MAX:.1f}])")
+
+    # ---- reset --------------------------------------------------------------
+
+    elif key in _KEY_R:
+        data.qpos[:] = _initial_qpos.copy()
+        data.qvel[:] = _initial_qvel.copy()
+        data.xfrc_applied[body_id, :] = 0.0
+        _flap_mode = "neutral"
+        _motor_on = False
+        mujoco.mj_forward(model, data)
+        _log(f"KEY R  |  Reset → pos={tuple(data.xpos[body_id].round(3))}  "
+             f"(flaps neutral, motor off)")
+
+# ---------------------------------------------------------------------------
+# Force-application helper
+# ---------------------------------------------------------------------------
+
+
+def _apply_force_at_body_point(
+    model: mujoco.MjModel,
+    data: mujoco.MjData,
+    body_id: int,
+    force_world: np.ndarray,
+    point_body: np.ndarray,
+) -> None:
+    """Apply a world-frame force at a body-frame point on a body."""
+    # COM position in world frame
+    com_world = data.subtree_com[body_id].copy()
+
+    # Body orientation quaternion
+    body_quat = np.zeros(4, dtype=np.float64)
+    mujoco.mju_mat2Quat(body_quat, data.xmat[body_id].reshape(9))
+
+    # Transform point from body to world frame
+    point_world = np.zeros(3, dtype=np.float64)
+    mujoco.mju_rotVecQuat(point_world, point_body, body_quat)
+    point_world += data.xpos[body_id]
+
+    # Torque about COM
+    r = point_world - com_world
+    torque_world = np.cross(r, force_world)
+
+    for i in range(3):
+        data.xfrc_applied[body_id, i] += force_world[i]
+        data.xfrc_applied[body_id, i + 3] += torque_world[i]
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+_start_time = time.time()
+
+
+def _log(msg: str) -> None:
+    t = time.time() - _start_time
+    print(f"[t={t:7.2f}s]  {msg}", flush=True)
+
+
+def _print_config(cfg: SimConfig) -> None:
+    """Print a readable configuration summary."""
+    w = 200 * cfg.gravity  # weight in N
+    print()
+    print("=" * 62)
+    print("  SIMULATION CONFIGURATION")
+    print("=" * 62)
+    print(f"  Model       : {cfg.xml_path}")
+    print(f"  Timestep    : {cfg.timestep} s  |  Gravity : {cfg.gravity} m/s²")
+    print(f"  Init pos    : ({cfg.init_pos[0]:.1f}, {cfg.init_pos[1]:.1f}, "
+          f"{cfg.init_pos[2]:.1f}) m")
+    print(f"  Init pitch  : {cfg.init_pitch_deg:.1f}°")
+    print(f"  UAV weight  : {w:.0f} N")
+    print(f"  --- Forces ---")
+    print(f"  Key 5 motor (+X @ nose) : {cfg.force_nose_x:.0f} N")
+    print(f"  --- Aerodynamics (body-frame) ---")
+    print(f"  Drag  (kx, ky, kz)      : {cfg.k_drag[0]:.0f}  {cfg.k_drag[1]:.0f}  "
+          f"{cfg.k_drag[2]:.0f}")
+    print(f"  Lift  (k_lift)           : {cfg.k_lift:.0f}")
+    print(f"  Rot damp (krx, kry, krz) : {cfg.k_rot_damp[0]:.0f}  "
+          f"{cfg.k_rot_damp[1]:.0f}  {cfg.k_rot_damp[2]:.0f}")
+    print(f"  --- Flaps ---")
+    print(f"  Flap coefficient (k_flap) : {cfg.flap_k:.0f}")
+    print(f"  Flap init magnitude       : {cfg.flap_init_magnitude:.2f}")
+    print(f"  Flap right pos (body)     : {cfg.flap_pos_right}")
+    print(f"  Flap left  pos (body)     : {cfg.flap_pos_left}")
+    print(f"  --- Force Scaling ---")
+    print(f"  Force multiplier (init)   : ×{cfg.force_init_multiplier:.1f}")
+    print("=" * 62)
+    print()
+    print("  CONTROLS  (top-row or numpad)")
+    print("    0      —  stop motor (cut thrust)")
+    print("    5      —  toggle motor (continuous +X thrust)")
+    print("    4 / 6  —  left / right flap turn")
+    print("    7 / 9  —  flap magnitude  ↓/↑")
+    print("    + / -  —  force multiplier ↑/↓")
+    print("    R      —  reset pose")
+    print("    ESC    —  exit")
+    print("  -----------  built-in MuJoCo viewer shortcuts  -----------")
+    print("    Tab    —  toggle info overlay")
+    print("    F1     —  toggle left  UI panel  (more view)")
+    print("    F2     —  toggle right UI panel  (more view)")
+    print("    RMB    —  rotate camera  |  MMB — zoom  |  LMB — pan")
+    print("=" * 62)
+    print()
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    global _cfg, _initial_qpos, _initial_qvel
+
+    # -- parse CLI ------------------------------------------------------------
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    cfg = _args_to_config(args)
+    _cfg = cfg
+
+    # -- initialise runtime mutable state --------------------------------------
+    global _flap_mode, _flap_magnitude, _force_multiplier, _motor_on
+    _flap_mode = "neutral"
+    _flap_magnitude = cfg.flap_init_magnitude
+    _force_multiplier = cfg.force_init_multiplier
+    _motor_on = False
+
+    # -- load model & data ----------------------------------------------------
+    _log(f"Loading model: {cfg.xml_path}")
+    model = mujoco.MjModel.from_xml_path(cfg.xml_path)
+    data = mujoco.MjData(model)
+
+    # -- override physics parameters from CLI ---------------------------------
+    model.opt.timestep = cfg.timestep
+    model.opt.gravity[2] = -cfg.gravity
+
+    # -- install aerodynamic callback -----------------------------------------
+    mujoco.set_mjcb_passive(_aero_passive_callback)
+
+    # -- set initial state ----------------------------------------------------
+    body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "uav")
+    # Set only the UAV free-joint portion of qpos / qvel
+    uav_qadr = model.jnt_qposadr[
+        mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "uav_joint")
+    ]
+    uav_dofadr = model.body_dofadr[body_id]
+    data.qpos[uav_qadr : uav_qadr + 7] = cfg.init_qpos
+    data.qvel[uav_dofadr : uav_dofadr + 6] = 0.0
+    mujoco.mj_forward(model, data)
+    _initial_qpos = data.qpos.copy()
+    _initial_qvel = data.qvel.copy()
+
+    # -- print info -----------------------------------------------------------
+    _print_config(cfg)
+
+    _log(f"UAV mass : {model.body_subtreemass[body_id]:.1f} kg")
+    _log(f"Init pos : {tuple(_initial_qpos[uav_qadr:uav_qadr+3])}")
+    _log(f"Init quat: {tuple(_initial_qpos[uav_qadr+3:uav_qadr+7].round(4))}  "
+         f"(roll=0°, pitch={cfg.init_pitch_deg}°, yaw=0°)")
+
+    # -- launch viewer --------------------------------------------------------
+    show_ui = not cfg.hide_ui
+    handle = mujoco.viewer.launch_passive(
+        model, data,
+        key_callback=_key_callback,
+        show_left_ui=show_ui,
+        show_right_ui=show_ui,
+    )
+    # Move camera +1 m along Y for better side view of the rail + UAV
+    handle.cam.lookat[0] -= 0.0
+    handle.cam.lookat[1] += 0.0
+    handle.cam.lookat[2] += 2.0
+    
+    
+    _log(f"Viewer launched (UI panels {'hidden' if cfg.hide_ui else 'visible'}).  "
+         "Press keys to interact.")
+
+    # -- physics loop ---------------------------------------------------------
+    _log(f"Target real-time rate: {1.0 / cfg.timestep:.0f} Hz  "
+         f"(dt={cfg.timestep:.4f} s)")
+
+    # Real-time pacing: track sim time vs wall time
+    _sim_time = 0.0
+    _wall_start = time.time()
+    _last_report = 0.0
+
+    try:
+        while handle.is_running():
+            # --- process keys ------------------------------------------------
+            while not _key_queue.empty():
+                try:
+                    key = _key_queue.get_nowait()
+                    if key == _glfw.KEY_ESCAPE:
+                        _log("ESC pressed — exiting.")
+                        handle.close()
+                        break
+                    _apply_key_action(model, data, key)
+                except queue.Empty:
+                    break
+
+            # ---- continuous motor thrust (key 5 toggle) ----------------------
+            if _motor_on:
+                fx = cfg.force_nose_x * _force_multiplier
+                _apply_force_at_body_point(
+                    model, data, body_id,
+                    force_world=np.array([fx, 0.0, 0.0]),
+                    point_body=np.array(cfg.nose_offset),
+                )
+
+            mujoco.mj_step(model, data)
+            data.xfrc_applied[body_id, :] = 0.0
+            handle.sync()
+
+            # --- real-time pacing -------------------------------------------
+            _sim_time += cfg.timestep
+            _wall_elapsed = time.time() - _wall_start
+            _sleep = _sim_time - _wall_elapsed
+            if _sleep > 0:
+                time.sleep(_sleep)
+
+    except KeyboardInterrupt:
+        _log("Interrupted (Ctrl+C).")
+        print()
+    finally:
+        handle.close()
+        _log("Simulation ended.")
+
+
+if __name__ == "__main__":
+    main()
