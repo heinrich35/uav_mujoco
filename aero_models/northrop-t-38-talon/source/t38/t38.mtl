@@ -1,0 +1,340 @@
+# Blender MTL File: 't38.blend'
+# Material Count: 31
+
+newmtl DefaultWhite
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/texture.png
+
+newmtl DefaultWhite_NONE
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl DefaultWhite_adi.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/standby-adi/adi.png
+
+newmtl DefaultWhite_ai.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/ai/ai.png
+
+newmtl DefaultWhite_alt.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/alt/alt.png
+
+newmtl DefaultWhite_aoa.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/aoa/aoa.png
+
+newmtl DefaultWhite_asi.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/asi/asi.png
+
+newmtl DefaultWhite_clock.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/clock/clock.png
+
+newmtl DefaultWhite_egt.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/egt/egt.png
+
+newmtl DefaultWhite_flaps.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/flaps/flaps.png
+
+newmtl DefaultWhite_fuel.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/Fuel/fuel.png
+
+newmtl DefaultWhite_fuelctrl.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/fuelctrl/fuelctrl.png
+
+newmtl DefaultWhite_fuelflow.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/Fuelflow/fuelflow.png
+
+newmtl DefaultWhite_gears.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/gears/gears.png
+
+newmtl DefaultWhite_gmeter.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/g/gmeter.png
+
+newmtl DefaultWhite_hsi.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/hsi/hsi.png
+
+newmtl DefaultWhite_hydrolic.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/hydrolic/hydrolic.png
+
+newmtl DefaultWhite_intercom.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/intercom/intercom.png
+
+newmtl DefaultWhite_interior.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/interior.png
+
+newmtl DefaultWhite_master.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/master/master.png
+
+newmtl DefaultWhite_oil.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/oil/oil.png
+
+newmtl DefaultWhite_panel.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/Avions/t38/sketchfab/panel.png
+
+newmtl DefaultWhite_ralt.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/ralt/ralt.png
+
+newmtl DefaultWhite_seat.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/seat/seat.png
+
+newmtl DefaultWhite_sides.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Sides/sides.png
+
+newmtl DefaultWhite_tac.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/tac/tac.png
+
+newmtl DefaultWhite_transponder.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/transponder/transponder.png
+
+newmtl DefaultWhite_trbn1.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/trbn1/trbn1.png
+
+newmtl DefaultWhite_vsi.png
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.250000 0.250000 0.250000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd /home/helijah/Essais-SL/FlightGear-Blender/Northrop-T38-Talon/Models/Interior/Panel/Instruments/vsi/vsi.png
+
+newmtl TransparentRed
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.000000 0.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.300000
+illum 2
+
+newmtl transparent
+Ns 96.078431
+Ka 0.000000 0.000000 0.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.300000
+illum 2
