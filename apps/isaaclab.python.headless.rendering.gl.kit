@@ -1,0 +1,131 @@
+##
+# Same as isaaclab.python.headless.rendering.kit except app.vulkan = false (requests OpenGL / GLX).
+#
+# Only use with explicit ISAACLAB_DISABLE_VULKAN=1 — do not auto-force: on many stacks (e.g. RTX 50 + 595.xx)
+# omniverse logs "[omni.gpu_foundation_factory.plugin] default graphics plugin cannot be set" and still hits
+# librtx/scenedb. Prefer a driver version validated for Isaac Sim 5.1 and keep Vulkan (do not set this env).
+##
+
+[package]
+title = "Isaac Lab Python Headless Camera (OpenGL)"
+description = "Headless camera rendering with Vulkan disabled (OpenGL path)"
+version = "2.3.0"
+
+keywords = ["experience", "app", "isaaclab", "python", "camera", "minimal", "opengl"]
+
+[dependencies]
+"isaaclab.python.headless" = {}
+"omni.replicator.core" = {}
+
+"omni.kit.material.library" = {}
+"omni.kit.viewport.rtx" = {}
+
+[settings.isaaclab]
+cameras_enabled = true
+
+[settings]
+app.versionFile = "${exe-path}/VERSION"
+app.folder = "${exe-path}/"
+app.name = "Isaac-Sim"
+app.version = "5.1.0"
+
+app.useFabricSceneDelegate = true
+rtx.hydra.readTransformsFromFabricInRenderDelegate = true
+
+app.enableStdoutOutput = false
+
+isaac.startup.ros_bridge_extension = ""
+
+rtx.translucency.enabled = false
+rtx.reflections.enabled = false
+rtx.indirectDiffuse.enabled = false
+rtx-transient.dlssg.enabled = false
+rtx.directLighting.sampledLighting.enabled = true
+rtx.directLighting.sampledLighting.samplesPerPixel = 1
+rtx.sceneDb.ambientLightIntensity = 1.0
+
+rtx.pathtracing.maxSamplesPerLaunch = 1000000
+rtx.viewTile.limit = 1000000
+
+exts."omni.renderer.core".present.enabled=false
+
+rtx.raytracing.cached.enabled = false
+rtx.ambientOcclusion.enabled = false
+
+rtx-transient.dldenoiser.enabled = false
+
+rtx.post.dlss.execMode = 0
+
+renderer.multiGpu.maxGpuCount=1
+
+omni.replicator.asyncRendering = false
+
+app.updateOrder.checkForHydraRenderComplete = 1000
+app.renderer.waitIdle=true
+app.hydraEngine.waitIdle=true
+
+app.execution.debug.forceSerial = true
+
+app.audio.enabled = false
+
+# OpenGL instead of Vulkan (workaround for some GPU/driver stacks; see package header)
+app.vulkan = false
+
+app.profilerBackend = "nvtx"
+
+app.runLoops.main.rateLimitEnabled=false
+
+exts."omni.replicator.core".Orchestrator.enabled = false
+
+metricsAssembler.changeListenerEnabled = false
+
+[settings.exts."omni.kit.registry.nucleus"]
+registries = [
+    { name = "kit/default", url = "https://ovextensionsprod.blob.core.windows.net/exts/kit/prod/107/shared" },
+    { name = "kit/sdk", url = "https://ovextensionsprod.blob.core.windows.net/exts/kit/prod/sdk/${kit_version_short}/${kit_git_hash}" },
+    { name = "kit/community", url = "https://dw290v42wisod.cloudfront.net/exts/kit/community" },
+]
+
+[settings.app.python]
+interceptSysStdOutput = false
+logSysStdOutput = false
+
+[settings.app.renderer]
+skipWhileMinimized = false
+sleepMsOnFocus = 0
+sleepMsOutOfFocus = 0
+
+[settings.physics]
+updateToUsd = false
+updateParticlesToUsd = false
+updateVelocitiesToUsd = false
+updateForceSensorsToUsd = false
+outputVelocitiesLocalSpace = false
+useFastCache = false
+visualizationDisplayJoints = false
+fabricUpdateTransformations = false
+fabricUpdateVelocities = false
+fabricUpdateForceSensors = false
+fabricUpdateJointStates = false
+fabricUseGPUInterop = true
+
+[settings.app.exts]
+folders = [
+    "${exe-path}/exts",
+    "${exe-path}/extscore",
+    "${exe-path}/../exts",
+    "${exe-path}/../extsDeprecated",
+    "${exe-path}/../extscache",
+    "${exe-path}/../extsPhysics",
+    "${exe-path}/../isaacsim/exts",
+    "${exe-path}/../isaacsim/extsDeprecated",
+    "${exe-path}/../isaacsim/extscache",
+    "${exe-path}/../isaacsim/extsPhysics",
+    "${app}",
+    "${app}/../source",
+]
+
+[settings]
+persistent.isaac.asset_root.default = "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1"
+persistent.isaac.asset_root.cloud = "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1"
+persistent.isaac.asset_root.nvidia = "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1"

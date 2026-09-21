@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<robot name="fw_uav">
+
+  <!-- Body Link -->
+  <link name="body_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="200.0"/>
+      <inertia ixx="40.0" ixy="0.0" ixz="0.0"
+               iyy="40.0" iyz="0.0"
+               izz="20.0"/>
+    </inertial>
+    <visual name="body_link_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="/home/heinz/isaaclab_uav/assets/shahed-136/source/shahed_collision_2.stl"/>
+      </geometry>
+    </visual>
+    <collision name="body_link_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="/home/heinz/isaaclab_uav/assets/shahed-136/source/shahed_collision_2.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Free joint to allow the drone to float in 6-DoF -->
+  <joint name="world_to_body" type="floating">
+    <parent link="world"/>
+    <child link="body_link"/>
+  </joint>
+
+</robot>

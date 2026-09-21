@@ -1,0 +1,66 @@
+
+  # Default (500 / 1000 / 1000)
+  ./isaaclab.sh -p scripts/pond/generate_training_data.py
+
+  # Custom sizes
+  ./isaaclab.sh -p scripts/pond/generate_training_data.py \
+      --mode_a_per_object 300 \
+      --mode_b_count 400 \
+      --mode_c_count 400
+
+  # Quick test run
+  ./isaaclab.sh -p scripts/pond/generate_training_data.py \
+      --mode_a_per_object 10 \
+      --mode_b_count 20 \
+      --mode_c_count 20
+
+  # Resume Mode C — add 500 more frames to existing 
+  ./isaaclab.sh -p scripts/pond/generate_training_data.py \
+      --mode_c_only --resume --mode_c_count 2000
+      
+  # Resume Mode B — bring existing up to  total
+  ./isaaclab.sh -p scripts/pond/generate_training_data.py \
+      --mode_b_only --resume --mode_b_count 2000
+      
+  ./isaaclab.sh -p scripts/pond/generate_training_data.py \
+      --mode_b_only --resume --mode_b_count 2000 --fast
+  ./isaaclab.sh -p scripts/pond/generate_training_data.py \
+      --mode_c_only --resume --mode_c_count 2000 --fast
+
+  The full pipeline command chain works unchanged — every script after generation discovers the actual file counts at runtime.
+
+
+  ./isaaclab.sh -p scripts/pond/generate_training_data.py
+  
+    ./isaaclab.sh -p scripts/pond/generate_training_data.py \
+      --mode_c_only --resume --mode_c_count 150
+
+  # Step 1 — Validate dataset
+  python scripts/pond/validate_dataset.py --data_dir outputs/training_data
+
+  # Step 2 — Convert to YOLO format
+  python scripts/pond/convert_to_yolo.py \
+      --data_root outputs/training_data \
+      --out_root ./pond_yolo
+
+  # Step 3 — Train Stage 1 detector (two-phase)
+  python scripts/pond/train_stage1.py \
+      --data ./pond_yolo/pond.yaml \
+      --run_name pond_v1 \
+      --device 0
+ 
+
+  # Step 1 — Prepare Stage 2 dataset (crops from Mode A + Mode B)
+  python scripts/pond/prepare_stage2.py \
+      --mode_a outputs/training_data/mode_a_isolated \
+      --mode_b outputs/training_data/mode_b_mixed \
+      --out ./stage2_dataset
+
+  # Step 2 — Train Stage 2 classifier (duck vs swan fine-grained)
+  python scripts/pond/train_stage2.py --data ./stage2_dataset --run_name pond_s2_v1 --device 0
+
+
+  # Step 4 — Evaluate stage 1 on test set
+  python scripts/pond/train_stage1.py \
+      --data ./pond_yolo/pond.yaml \
+      --eval_only runs/pond_stage1/pond_v1_phase2/weights/best.pt

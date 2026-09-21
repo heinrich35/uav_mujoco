@@ -14,3 +14,4 @@ nohup.out
 *.pre_rename.bak
 # blend backups
 *.blend1
+pond_yolo/

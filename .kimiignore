@@ -1,0 +1,31 @@
+# 1. Ignore everything by default
+/*
+
+# 2. Allow only the specific project root files
+!/.kimiignore
+!/agents.md
+
+# 3. Allow ONLY the rover environment definition
+!/source/
+/source/*
+!/source/isaaclab_tasks/
+/source/isaaclab_tasks/*
+!/source/isaaclab_tasks/isaaclab_tasks/
+/source/isaaclab_tasks/isaaclab_tasks/*
+!/source/isaaclab_tasks/isaaclab_tasks/manager_based/
+/source/isaaclab_tasks/isaaclab_tasks/manager_based/*
+!/source/isaaclab_tasks/isaaclab_tasks/manager_based/rover/
+
+# 4. Allow ONLY the rsl_rl training scripts
+!/scripts/
+/scripts/*
+!/scripts/reinforcement_learning/
+/scripts/reinforcement_learning/*
+!/scripts/reinforcement_learning/rsl_rl/
+
+# 5. Allow ONLY the rover localization experiment logs
+!/logs/
+/logs/*
+!/logs/rsl_rl/
+/logs/rsl_rl/*
+!/logs/rsl_rl/rover_localization_env/

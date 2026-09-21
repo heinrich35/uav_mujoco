@@ -1,0 +1,225 @@
+
+<?xml version="1.0" encoding="utf-8"?>
+<!-- rover.urdf.xacro — winged drone with flaps -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="$(arg prefix)">
+
+  <!-- ───── launch-time arguments (must stay at the top) ───── -->
+  <xacro:arg name="prefix" default="rover"/>
+  <xacro:arg name="description_pkg" default="rover_description"/>
+
+  <!-- bridge prefix and description_pkg args into properties -->
+  <xacro:property name="prefix" value="$(arg prefix)"/>
+  <xacro:property name="description_pkg" value="$(arg description_pkg)"/>
+
+  <!-- arguments required for ros2_control macro -->
+  <xacro:arg name="world_name" default="world"/>
+  <xacro:arg name="agent_ns" default=""/>
+  <xacro:arg name="use_sim_time" default="false"/>
+  <xacro:arg name="simulation_controllers_config_file" default="$(find rover_gazebo)/config/gazebo_rover_controllers.yaml"/>
+  <xacro:arg name="ff_vel" default="3.0"/>
+  <xacro:arg name="ff_accel" default="1.2"/>
+
+  <!-- now sim_ctrl_file can stay as-is -->
+  <xacro:property name="sim_ctrl_file" value="$(arg simulation_controllers_config_file)"/>
+
+  <!-- include ros2_control definition -->
+  <xacro:include filename="$(find rover_description)/urdf/ros2_control/rover.ros2_control.xacro"/>
+
+  <!-- ─────────────── Body ─────────────── -->
+  <link name="${prefix}_base"/>
+  <joint name="${prefix}_base_fixed" type="fixed">
+    <parent link="${prefix}_base"/>
+    <child link="${prefix}_body"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="${prefix}_body">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1.0"/>
+      <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/visual/rover.dae" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.65 0.22 0.08"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Right Inner Flap Link -->
+  <link name="${prefix}_wheel_RR">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia ixx="0.005" ixy="0.0" ixz="0.0" iyy="0.005" iyz="0.0" izz="0.005"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/visual/flap_i.dae" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/collision/flap_i.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Right Outer Flap Link -->
+  <link name="${prefix}_wheel_RL">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia ixx="0.005" ixy="0.0" ixz="0.0" iyy="0.005" iyz="0.0" izz="0.005"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/visual/flap_o.dae" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/collision/flap_o.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Left Inner Flap Link -->
+  <link name="${prefix}_wheel_RL">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia ixx="0.005" ixy="0.0" ixz="0.0" iyy="0.005" iyz="0.0" izz="0.005"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/visual/flap_i.dae" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/collision/flap_i.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Left Outer Flap Link -->
+  <link name="${prefix}_wheel_FL">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.05"/>
+      <inertia ixx="0.005" ixy="0.0" ixz="0.0" iyy="0.005" iyz="0.0" izz="0.005"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/visual/flap_o.dae" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="file://$(find ${description_pkg})/meshes/collision/flap_o.stl" scale="0.01 0.01 0.01"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- wheel joints -->
+  <joint name="${prefix}_base_to_RR" type="continuous">
+    <parent link="${prefix}_body"/>
+    <child link="${prefix}_wheel_RR"/>
+    <origin xyz="-0.3   0.29 -0.1" rpy="1.57079632679 0 0"/>
+    <axis xyz="0 0 1"/>
+    <dynamics damping="0.2" friction="9.0"/>
+  </joint>
+
+  <joint name="${prefix}_base_to_RL" type="continuous">
+    <parent link="${prefix}_body"/>
+    <child link="${prefix}_wheel_RL"/>
+    <origin xyz="-0.3   -0.29 -0.1" rpy="1.57079632679 0 0"/>
+    <axis xyz="0 0 1"/>
+    <dynamics damping="0.2" friction="9.0"/>
+  </joint>
+
+  <joint name="${prefix}_base_to_FL" type="continuous">
+    <parent link="${prefix}_body"/>
+    <child link="${prefix}_wheel_FL"/>
+    <origin xyz="0.3   -0.29 -0.1" rpy="1.57079632679 0 0"/>
+    <axis xyz="0 0 1"/>
+    <dynamics damping="0.2" friction="9.0"/>
+  </joint>
+
+  <joint name="${prefix}_base_to_FR" type="continuous">
+    <parent link="${prefix}_body"/>
+    <child link="${prefix}_wheel_FR"/>
+    <origin xyz="0.3   0.29 -0.1" rpy="1.57079632679 0 0"/>
+    <axis xyz="0 0 1"/>
+    <dynamics damping="0.2" friction="9.0"/>
+  </joint>
+
+  <!-- ───────── instantiate ros2_control plugin and controllers ───────── -->
+  <xacro:rover_drone_ros2_control
+      prefix="${prefix}"
+      world_name="$(arg world_name)"
+      agent_ns="$(arg agent_ns)"
+      use_sim_time="$(arg use_sim_time)"
+      simulation_controllers_config_file="${sim_ctrl_file}"
+      ff_vel="$(arg ff_vel)"
+      ff_accel="$(arg ff_accel)"/>
+
+
+  <!-- Camera Setup 
+
+  <link name="camera_pole">
+    <visual>
+      <geometry>
+        <cylinder length="1.25" radius="0.02"/>
+      </geometry>
+                <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0"
+               iyy="0.01" iyz="0.0"
+               izz="0.01"/>
+    </inertial>
+  </link>
+
+
+  <joint name="base_to_camera_pole" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_pole"/>
+    <origin xyz="0.4 0.12 .675" rpy="1.57079632679 0 0"/>
+  </joint>
+
+  <link name="camera_link">
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="camera_pole"/>
+    <child link="camera_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+-->
+
+</robot>
+<!-- end of file -->
+

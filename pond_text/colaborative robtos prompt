@@ -1,0 +1,44 @@
+'/home/heinz/isaaclab_uav/scripts/pond/launch_pond.py'
+
+  please create isaacsim task, reinforcement learning task, collaborative robots task
+
+  with environment similar to launch_pond.py
+  1.physical parameters and pond similar.
+  2. please create 2 new robots by madding camera to the robots swan duck, name new robot swan_cam , duck_cam to have a camera similar to camera of robot gosling (same camera
+  parameters, same camera position)
+  3. in train env, objects to spawn as robots:
+  4 instances of swan_cam robot at random position orientation (z rotation)
+  4 instances of duck_cam robot at random position orientation
+  4 instances each object of turtle lilypad log rock, those are fixed unmoveable objects , spawn at random position and z rotation
+  
+  
+  4. the swan_cam duck_cam are the robots for independent actors in our collaborative robots training
+
+  5.
+  the duck_cam swan_cam cameras provide image channel, in simulation we running vision model
+  /home/heinz/isaaclab_uav/runs/detect/runs/pond_stage1/pond_v1_phase2-3
+   the vision inference provide
+   
+Position in image    bbox = (x1, y1, x2, y2) pixel coordinates            
+Scale in image       size_px = bbox area in pixels; width/height from bbox
+Class + confidence   label, confidence, stage2_conf                       
+
+we use those as observations in training
+
+
+6. actions:
+move forward / turn left / turn right 
+similar to teleoperation of arrow keys in script launch_pond.py 
+
+
+
+7. reward 
+each actor reward function for
+moving forward = positive velocity on local +x axis
+exploration = visit position within pond area that was not visited in the last period (all objects restricted position to within pond water arena)
+we encorage exploration by deviding pond arena to 1m grid
+define reward points to each position on grid, default = +3
+
+
+panelties:
+robot swan_cam panelized for proximity <2m to any other robot or object , expet for

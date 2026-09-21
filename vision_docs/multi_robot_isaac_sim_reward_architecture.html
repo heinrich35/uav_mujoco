@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-robot exploration — Isaac Sim reward architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F7F5; --surface:#FFFFFF; --surface-2:#F0F2EE;
+    --text:#1B1E1C; --text-muted:#5B6059; --border:#DEE2DB;
+    --accent:#1F6F5C; --accent-strong:#154F41; --accent-soft:#E2EFEA;
+    --warn:#A6512D; --warn-soft:#F5E7DE;
+    --code-bg:#EEF1EB;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+    --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --radius:8px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#141614; --surface:#1B1E1B; --surface-2:#212420;
+      --text:#E7E9E5; --text-muted:#9AA098; --border:#33372F;
+      --accent:#4FAE93; --accent-strong:#6FC7AC; --accent-soft:#1E2E28;
+      --warn:#D98357; --warn-soft:#2E241C;
+      --code-bg:#20231F;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); line-height:1.65; font-size:16px;
+  }
+  main{max-width:880px; margin:0 auto; padding:0 24px 80px;}
+  header.page{
+    max-width:880px; margin:0 auto; padding:56px 24px 24px;
+  }
+  header.page .eyebrow{
+    font-family:var(--mono); font-size:13px; color:var(--accent);
+    text-transform:uppercase; letter-spacing:.06em; margin:0 0 10px;
+  }
+  header.page h1{
+    font-size:32px; font-weight:600; margin:0 0 12px; letter-spacing:-.01em;
+  }
+  header.page p.sub{
+    color:var(--text-muted); font-size:17px; max-width:640px; margin:0;
+  }
+  nav.toc{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 22px; margin:28px 0 40px;
+  }
+  nav.toc .toc-label{
+    font-family:var(--mono); font-size:12px; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; display:block;
+  }
+  nav.toc ol{margin:0; padding-left:20px; columns:2; column-gap:32px;}
+  nav.toc li{margin-bottom:6px; font-size:14.5px;}
+  nav.toc a{color:var(--text); text-decoration:none; border-bottom:1px solid transparent;}
+  nav.toc a:hover{border-bottom-color:var(--accent); color:var(--accent-strong);}
+  section{margin:56px 0;}
+  h2{
+    font-size:22px; font-weight:600; margin:0 0 6px; padding-left:14px;
+    border-left:3px solid var(--accent); letter-spacing:-.005em;
+  }
+  h2 .num{color:var(--accent); font-family:var(--mono); font-weight:500; margin-right:8px;}
+  h3{font-size:17px; font-weight:600; margin:28px 0 10px;}
+  p{margin:0 0 14px;}
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:6px;}
+  code{
+    font-family:var(--mono); font-size:.9em; background:var(--code-bg);
+    padding:2px 5px; border-radius:4px;
+  }
+  pre{
+    font-family:var(--mono); font-size:13.5px; background:var(--code-bg);
+    border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px 18px; overflow-x:auto; line-height:1.55;
+  }
+  pre code{background:none; padding:0;}
+  .callout{
+    background:var(--accent-soft); border-left:3px solid var(--accent);
+    border-radius:0 var(--radius) var(--radius) 0; padding:14px 18px; margin:18px 0;
+    font-size:14.5px;
+  }
+  .callout.warn{background:var(--warn-soft); border-left-color:var(--warn);}
+  .callout strong{color:var(--accent-strong);}
+  .callout.warn strong{color:var(--warn);}
+  table{
+    width:100%; border-collapse:collapse; font-size:14px; margin:18px 0;
+  }
+  .table-wrap{overflow-x:auto; margin:18px 0;}
+  .table-wrap table{margin:0; min-width:640px;}
+  th,td{
+    text-align:left; padding:10px 12px; border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  th{
+    background:var(--surface-2); font-weight:600; font-size:12.5px;
+    text-transform:uppercase; letter-spacing:.03em; color:var(--text-muted);
+  }
+  tr:hover td{background:var(--surface-2);}
+  td.param{font-family:var(--mono); font-weight:500; white-space:nowrap; color:var(--accent-strong);}
+  figure{margin:24px 0; text-align:center;}
+  figcaption{
+    font-size:13px; color:var(--text-muted); margin-top:10px; font-family:var(--mono);
+  }
+  .bbox-card{
+    display:inline-block; background:#EDEFEA; border:1px solid var(--border);
+    border-radius:var(--radius); padding:12px;
+  }
+  /* architecture diagram (css boxes, no svg coordinate math) */
+  .arch{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:28px 22px; margin:22px 0;
+  }
+  .arch-box{
+    border-radius:6px; padding:12px 16px; font-size:14.5px; font-weight:500;
+    text-align:center;
+  }
+  .arch-box .tag{
+    display:block; font-family:var(--mono); font-weight:400; font-size:12px;
+    color:var(--text-muted); margin-top:4px;
+  }
+  .arch-box.solid{background:var(--accent-soft); border:1.5px solid var(--accent);}
+  .arch-box.dashed{background:var(--surface-2); border:1.5px dashed var(--text-muted);}
+  .arch-box.full{max-width:100%;}
+  .arch-box.accent{background:var(--accent); border-color:var(--accent-strong); color:#fff;}
+  .arch-box.accent .tag{color:#e6f2ee;}
+  .arch-arrow{
+    text-align:center; font-size:18px; color:var(--text-muted); margin:6px 0;
+    font-family:var(--mono);
+  }
+  .arch-cols{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin:6px 0;}
+  .arch-col-label{
+    text-align:center; font-family:var(--mono); font-size:11.5px; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px;
+  }
+  .arch-row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .arch-box.small{font-size:13px; padding:10px 8px;}
+  .arch-loop{
+    text-align:center; font-family:var(--mono); font-size:12px; color:var(--text-muted);
+    margin-top:10px;
+  }
+  .legend{
+    display:flex; gap:22px; justify-content:center; margin-top:20px;
+    font-size:12.5px; color:var(--text-muted); flex-wrap:wrap;
+  }
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{width:14px; height:14px; border-radius:3px; display:inline-block;}
+  .swatch.solid{background:var(--accent-soft); border:1.5px solid var(--accent);}
+  .swatch.dashed{background:var(--surface-2); border:1.5px dashed var(--text-muted);}
+  @media (max-width: 640px){
+    .arch-cols, .arch-row2{grid-template-columns:1fr;}
+    nav.toc ol{columns:1;}
+  }
+  footer{
+    max-width:880px; margin:0 auto; padding:24px 24px 60px; color:var(--text-muted);
+    font-size:13px; border-top:1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header class="page">
+  <p class="eyebrow">Reward architecture — revision 2</p>
+  <h1>Multi-robot exploration: Isaac Sim &amp; vision-based reward architecture</h1>
+  <p class="sub">Extends the generic multi-robot reward design to run natively in Isaac Sim, treats an onboard camera + object detector as the only channel the policy actually perceives through, and trains the critic from Isaac Sim's privileged ground truth instead.</p>
+</header>
+
+<main>
+
+<nav class="toc">
+  <span class="toc-label">Contents</span>
+  <ol>
+    <li><a href="#overview">What changed from the generic version</a></li>
+    <li><a href="#isaac-sim">Isaac Sim environment adaptation</a></li>
+    <li><a href="#vision-obs">Vision-based observation &amp; detection encoding</a></li>
+    <li><a href="#reward-split">Reward: privileged ground truth vs. perception</a></li>
+    <li><a href="#architecture">Architecture: asymmetric actor-critic</a></li>
+    <li><a href="#critic-training">Training the critic from ground truth</a></li>
+    <li><a href="#tuning">Tunable parameters → emergent strategies</a></li>
+    <li><a href="#modules">Module skeleton</a></li>
+    <li><a href="#step-order">Per-step execution order</a></li>
+    <li><a href="#notes">Implementation notes</a></li>
+  </ol>
+</nav>
+
+<section id="overview">
+  <h2><span class="num">00</span>What changed from the generic version</h2>
+  <p>The previous design assumed the robot directly perceives a visited-grid crop and privileged teammate positions. Four things are different now:</p>
+  <ul>
+    <li><strong>Sim engine.</strong> The environment is built on Isaac Sim / Isaac Lab, which gives GPU-parallel physics, thousands of vectorized environments, and — for free — perfect ground-truth robot poses and occupancy.</li>
+    <li><strong>Sensing.</strong> Each robot only has an onboard camera. What reaches the policy is a stream of detections: <code>bbox=(x1,y1,x2,y2)</code>, <code>size_px</code> (area, width, height), <code>label</code>, <code>confidence</code>, <code>stage2_conf</code>. No privileged coordinates reach the actor.</li>
+    <li><strong>Reward vs. perception split.</strong> Ground truth is still free during training — it now feeds the reward function and a centralized critic, while the deployed actor only ever consumes vision. This is a standard <em>asymmetric actor-critic</em> setup.</li>
+    <li><strong>Tunable strategy space.</strong> A dedicated section maps reward/observation parameters to the emergent multi-robot behavior they produce — formation-keeping, territorial splitting, cautious vs. efficient obstacle clearance, and so on.</li>
+  </ul>
+</section>
+
+<section id="isaac-sim">
+  <h2><span class="num">01</span>Isaac Sim environment adaptation</h2>
+
+  <h3>Simulation &amp; robot setup</h3>
+  <p>Use <strong>Isaac Lab</strong> as the RL environment layer on top of Isaac Sim — its <code>ManagerBasedRLEnv</code> already separates observations, rewards, resets, and terminations into manager classes, which maps directly onto the module boundaries below. Each parallel environment instance is one exploration arena containing N robot Articulations, static obstacle prims, and a floor tagged with a walkable semantic class. Robots are tracked as a batched <code>ArticulationView</code>, so <code>get_world_poses()</code> returns a <code>[num_envs, num_robots, 7]</code> tensor — this is the ground-truth position source, and it costs nothing extra since the physics engine already computes it.</p>
+
+  <h3>Occupancy / visited-grid ground truth</h3>
+  <p>Keep the 70×70 visited grid as a GPU tensor, <code>torch.zeros(num_envs, 70, 70)</code>, not a rendered sensor. Update it every step by projecting each robot's exact <code>(x, y)</code> plus vision radius into grid indices — pure tensor math, no rendering required, and it stays perfectly synchronized across thousands of parallel envs. The walkable mask can be pre-baked once per arena layout by rasterizing the USD stage's collision meshes, or pulled from Isaac Sim's occupancy-map extension.</p>
+
+  <h3>Camera sensors</h3>
+  <p>Attach one RTX <code>Camera</code> prim per robot, parented to its base link at the same mount point the real robot will eventually use — this parity is the actual sim-to-real contract, more so than any other part of the pipeline. For early development, attach a Replicator <code>bounding_box_2d_tight</code> annotator to that same camera: it gives a perfect, free detector so the reward/observation pipeline can be validated independently of detector noise. Swap it for a real trained detector's inference once the pipeline is confirmed working — same output schema, same downstream code.</p>
+
+  <h3>Parallelization</h3>
+  <p>RTX rendering, not physics, is the bottleneck for this setup, since it needs one camera per robot per environment. Isaac Lab's <code>TiledCamera</code> batches many low-resolution camera renders per GPU step. A common pattern: run physics at full rate, but run camera rendering + detector inference at a lower frequency (e.g. every 4th physics step), holding the last observation/action in between.</p>
+
+  <h3>Domain randomization</h3>
+  <p>Randomize lighting, obstacle materials, and camera sensor noise per episode via Replicator, so neither the detector nor the downstream policy overfits to one arena's rendering.</p>
+</section>
+
+<section id="vision-obs">
+  <h2><span class="num">02</span>Vision-based observation &amp; detection encoding</h2>
+  <p>Per robot, per step, the detector returns a variable-length list of detections with this schema:</p>
+
+  <figure>
+    <div class="bbox-card">
+      <svg viewBox="0 0 440 290" width="100%" style="max-width:420px; display:block;">
+        <rect x="10" y="10" width="420" height="240" rx="6" fill="#E7EAE3" stroke="#C7CCC1" stroke-width="1"/>
+        <text x="24" y="30" font-size="12" fill="#6B7066" font-family="IBM Plex Mono, monospace">camera image — per robot, per step</text>
+        <rect x="150" y="80" width="150" height="110" rx="2" fill="none" stroke="#1F6F5C" stroke-width="2" stroke-dasharray="6 4"/>
+        <circle cx="150" cy="80" r="3.5" fill="#1F6F5C"/>
+        <text x="98" y="74" font-size="12" fill="#1F6F5C" font-family="IBM Plex Mono, monospace">(x1, y1)</text>
+        <circle cx="300" cy="190" r="3.5" fill="#1F6F5C"/>
+        <text x="304" y="208" font-size="12" fill="#1F6F5C" font-family="IBM Plex Mono, monospace">(x2, y2)</text>
+        <line x1="225" y1="80" x2="225" y2="190" stroke="#8B9086" stroke-width="1" stroke-dasharray="2 3"/>
+        <line x1="150" y1="135" x2="300" y2="135" stroke="#8B9086" stroke-width="1" stroke-dasharray="2 3"/>
+        <text x="225" y="228" font-size="12.5" text-anchor="middle" fill="#1B1E1C" font-family="IBM Plex Mono, monospace">size_px = (x2−x1)·(y2−y1)</text>
+        <text x="225" y="246" font-size="11" text-anchor="middle" fill="#6B7066" font-family="IBM Plex Mono, monospace">label=teammate_robot conf=0.92 stage2_conf=0.88</text>
+      </svg>
+    </div>
+    <figcaption>one detection record — the actor never sees (x, y) world coordinates, only this</figcaption>
+  </figure>
+
+  <p><code>stage2_conf</code> implies a two-stage detector (propose → verify/classify). Treat it as a second gate: a detection should only count toward observation or reward if both <code>confidence</code> and <code>stage2_conf</code> clear their thresholds (see the tuning table).</p>
+
+  <h3>Fixed-size encoding for a variable-length detection list</h3>
+  <p>The actor needs a fixed-size input, but the detector returns anywhere from zero to many detections. Two options:</p>
+  <ul>
+    <li><strong>Set encoder (recommended).</strong> Pad or truncate to the top-<em>K</em> detections ranked by <code>confidence × stage2_conf</code>. Each row: <code>[x1,y1,x2,y2 (normalized), area_norm, label_onehot, confidence, stage2_conf]</code>, passed through a small permutation-invariant encoder (per-detection MLP → max/mean pool, DeepSets-style). This keeps the policy indifferent to detection order and robust to <em>K</em> varying slightly.</li>
+    <li><strong>Rasterized heatmap.</strong> Project detections onto a coarse image-plane grid (one channel per class, value = confidence). Simpler to fuse with a CNN if the visited grid is also fed as an image, but loses precise bbox geometry.</li>
+  </ul>
+  <p>Recommended: the set encoder, with proprioception (own velocity, heading) concatenated after pooling.</p>
+
+  <h3>Distance and bearing from bbox geometry</h3>
+  <p><code>size_px</code> is an inverse proxy for distance — a closer object produces a larger bbox. Since area scales roughly with <code>1/distance²</code>, use <code>1/sqrt(size_px)</code> where a term needs to behave like a distance, rather than raw area, which is far too nonlinear at close range. The horizontal bbox center relative to image center gives bearing — useful for turn-toward/turn-away behavior.</p>
+
+  <h3>Class-to-reward-term mapping</h3>
+  <p>If the detector's class set includes <code>teammate_robot</code>, <code>obstacle</code>, and optionally a visual frontier marker, those three classes map directly onto the proximity, collision/margin, and frontier-shaping reward terms — computed from detected bbox geometry rather than privileged coordinates, whenever the goal is to make the actor's <em>behavior</em> itself reactive to what it visually confirms (as distinct from how the training reward itself is computed — see the next section).</p>
+</section>
+
+<section id="reward-split">
+  <h2><span class="num">03</span>Reward: privileged ground truth vs. perception</h2>
+  <p>This is the central architectural decision in the whole design: <strong>reward and observation are decoupled.</strong> Ground truth is free during Isaac Sim training, so reward should almost always be computed from the privileged state — exact positions, exact occupancy — even though the actor only ever sees camera detections. This keeps the reward signal clean and low-variance (not corrupted by detector false negatives or noise) while the policy itself only ever consumes the vision-based input that has to transfer to a real robot.</p>
+  <ul>
+    <li>Exploration reward, overlap penalty, frontier shaping, collision penalties, time penalty — all computed from the ground-truth state manager, same formulas as the generic version.</li>
+    <li><strong>Deliberate exception:</strong> if part of the goal is training the robot to react to what it actually notices (not just what's geometrically nearby), a detection-gated bonus/penalty can be computed directly from the vision stream. Use this narrowly — it means training reward now depends on a detector that may itself still be learning. See "vision-gated vs. ground-truth-gated" in the tuning table.</li>
+  </ul>
+  <div class="callout">
+    <strong>Rule of thumb:</strong> compute reward from privileged state by default; only switch a specific term to vision-gated when you explicitly want to shape active-sensing behavior (the robot learning to look toward what matters, not just react to it).
+  </div>
+</section>
+
+<section id="architecture">
+  <h2><span class="num">04</span>Architecture: asymmetric actor-critic</h2>
+  <p>Solid boxes are computed from privileged ground truth (training-only). Dashed boxes are the vision path — the only thing that has to exist on the real robot.</p>
+
+  <div class="arch">
+    <div class="arch-box solid full">Isaac Sim — physics &amp; rendering<span class="tag">ground-truth source</span></div>
+    <div class="arch-arrow">↓</div>
+    <div class="arch-cols">
+      <div class="arch-col">
+        <div class="arch-col-label">privileged · training-only</div>
+        <div class="arch-box solid">Ground truth state manager<span class="tag">poses · occupancy · obstacle map</span></div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-row2">
+          <div class="arch-box solid small">Reward components</div>
+          <div class="arch-box solid small">Critic (centralized)</div>
+        </div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-box solid">Reward aggregator</div>
+      </div>
+      <div class="arch-col">
+        <div class="arch-col-label">on-robot perception · sim + real</div>
+        <div class="arch-box dashed">RTX camera → object detector<span class="tag">bbox · size_px · label · conf · stage2_conf</span></div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-box dashed">Detection encoder</div>
+        <div class="arch-arrow">↓</div>
+        <div class="arch-box dashed">Actor policy<span class="tag">shared weights across robots</span></div>
+        <div class="arch-loop">↻ action → back to Isaac Sim physics</div>
+      </div>
+    </div>
+    <div class="arch-arrow">↓</div>
+    <div class="arch-box accent full">PPO / MAPPO update<span class="tag">critic loss uses privileged value + reward · policy update touches only the vision-conditioned actor</span></div>
+    <div class="legend">
+      <span><span class="swatch solid"></span> privileged / ground truth</span>
+      <span><span class="swatch dashed"></span> vision / perceived (what deploys to the real robot)</span>
+    </div>
+  </div>
+</section>
+
+<section id="critic-training">
+  <h2><span class="num">05</span>Training the critic from ground truth</h2>
+  <p>This is standard asymmetric actor-critic, same family as OpenAI's Dactyl / asymmetric self-play work — the refinement here is exactly what goes into each network's input:</p>
+  <ul>
+    <li><strong>Actor input:</strong> the vision-based observation from Section 2 — detection set encoding + proprioception. Identical network, shared weights, run per robot. This is the only thing that has to be plausible on a real robot.</li>
+    <li><strong>Critic input:</strong> the full privileged joint state — every robot's exact pose and velocity, the complete 70×70 visited grid (not just a local crop), the full obstacle map, and ground-truth pairwise distances. One centralized critic can see everyone, precisely because it never has to run outside simulation.</li>
+  </ul>
+  <p>Advantages are computed from the privileged critic's value estimates; the policy-gradient update is applied only to the vision-conditioned actor. In Isaac Lab terms: define two observation groups in the same <code>ObservationManager</code> — <code>"policy"</code> (vision + proprioception) and <code>"critic"</code> (privileged state). Most Isaac Lab RL wrappers (RSL-RL, rl_games, skrl) already support this asymmetric split natively.</p>
+  <div class="callout warn">
+    <strong>Watch for:</strong> a policy that appears to work in sim because the reward — computed from privileged state — happens to correlate with a fixed obstacle layout the detector alone couldn't have inferred. Randomize the arena layout per episode so training reward can't leak privileged information into the deployed policy through the back door of environment determinism.
+  </div>
+</section>
+
+<section id="tuning">
+  <h2><span class="num">06</span>Tunable parameters → emergent strategies</h2>
+  <p>Every row below is a knob on the reward or observation pipeline; the right column is the qualitative multi-robot behavior it tends to produce. These interact — treat this as a starting map, not independent dials.</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Parameter</th><th>Higher value →</th><th>Lower / negative value →</th><th>Notes &amp; tradeoffs</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="param">proximity_reward_w</td>
+        <td>tight flocking — robots stay within detection range of teammates, effectively keeping formation</td>
+        <td>robots spread apart to maximize independent coverage</td>
+        <td>too high collapses exploration efficiency into clustering; pair with overlap penalty to prevent full collapse</td>
+      </tr>
+      <tr>
+        <td class="param">overlap_penalty_w</td>
+        <td>strict territorial division emerges — implicit Voronoi-style split of the map</td>
+        <td>redundant, overlapping coverage — slower but more robust to a robot dropping out</td>
+        <td>tune with frontier_reassign_freq; too strict + too infrequent reassignment causes thrash at boundaries</td>
+      </tr>
+      <tr>
+        <td class="param">obstacle_margin</td>
+        <td>wide, cautious berths around obstacles — slower but safer paths, better real-world transfer</td>
+        <td>tight paths hugging obstacles — efficient in sim, riskier on real hardware with detector/pose error</td>
+        <td>use a continuous penalty ∝ 1/distance² for smooth avoidance; a binary collision-only penalty gives no shaping and tends to produce wall-hugging loops</td>
+      </tr>
+      <tr>
+        <td class="param">time_penalty</td>
+        <td>urgency — faster, more direct paths, more willing to cut close to risk</td>
+        <td>slower, more thorough and cautious exploration</td>
+        <td>interacts strongly with obstacle_margin — high urgency + tight margins is the most collision-prone combination</td>
+      </tr>
+      <tr>
+        <td class="param">frontier_shaping_w</td>
+        <td>goal-directed beelining toward the nearest unclaimed region</td>
+        <td>locally greedy — thorough nearby coverage, slower macro progress, prone to dead-end wandering late in an episode</td>
+        <td>this is the fix for the sparse-reward "90% explored, target is far away" problem from the base design</td>
+      </tr>
+      <tr>
+        <td class="param">team_bonus_w vs individual_w</td>
+        <td>higher team weight: cooperative, will sacrifice individual efficiency for team completion</td>
+        <td>higher individual weight: risk of free-riding, or competitive/territorial behavior</td>
+        <td>start near 0.3 team / 0.7 individual and move only if you observe under-cooperation, not before</td>
+      </tr>
+      <tr>
+        <td class="param">detection_range</td>
+        <td>longer reliable teammate detection range: earlier coordination, loose but well-timed territory splitting</td>
+        <td>shorter range: independent, greedy behavior — robots only react to teammates once very close</td>
+        <td>this is effectively the camera FOV / max reliable detection distance, a hardware-grounded parameter, not a free one</td>
+      </tr>
+      <tr>
+        <td class="param">min_safe_distance</td>
+        <td>larger: spread-out swarm, wide berth kept around teammates at all times</td>
+        <td>smaller: allows tight clustering or convoy-style following</td>
+        <td>sets the floor for how close proximity_reward_w is even allowed to pull robots together</td>
+      </tr>
+      <tr>
+        <td class="param">conf_threshold / stage2_conf_threshold</td>
+        <td>higher: reacts only to confident detections — safer, but slower to react, can miss real but low-confidence hazards</td>
+        <td>lower: jumpy, reactive behavior; false positives inject reward noise and destabilize training</td>
+        <td>tune stage2_conf_threshold slightly looser than confidence_threshold if stage-2 is a verifier, not a duplicate detector</td>
+      </tr>
+      <tr>
+        <td class="param">bbox_size→reward curve</td>
+        <td>reward ∝ size_px: "get closer" — approach/inspect behavior</td>
+        <td>reward ∝ 1/size_px: "stay small in frame" — avoidance / wide-FOV coverage behavior</td>
+        <td>a third shape, reward ∝ −|size_px − target|, produces station-keeping / fixed follow-distance escort behavior instead of either extreme</td>
+      </tr>
+      <tr>
+        <td class="param">frontier_reassign_freq</td>
+        <td>reassign every step: tighter, near-optimal territory split, more compute</td>
+        <td>reassign every K steps: cheaper, but a robot can briefly "poach" a teammate's frontier before correction</td>
+        <td>every 5–10 steps is a reasonable starting point for a 70×70 grid</td>
+      </tr>
+      <tr>
+        <td class="param">vision-gated vs ground-truth-gated reward</td>
+        <td>vision-gated: the policy must actually look toward teammates/obstacles to get credit</td>
+        <td>ground-truth-gated: reward available regardless of where the camera points</td>
+        <td>vision-gated produces active-sensing/scanning behavior but couples reward quality to current detector quality — see Section 3's callout</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="modules">
+  <h2><span class="num">07</span>Module skeleton</h2>
+  <ul>
+    <li><code>IsaacSimEnvWrapper</code> — vectorized <code>ManagerBasedRLEnv</code> subclass; owns the parallel arenas and robot Articulations</li>
+    <li><code>GroundTruthStateManager</code> — privileged; GPU-tensor visited grid, exact poses, occupancy, obstacle map, pairwise distances</li>
+    <li><code>CameraDetectionPipeline</code> — per-robot RTX camera + detector inference (Replicator bbox annotator during bootstrap, trained detector after)</li>
+    <li><code>DetectionEncoder</code> — set encoder: variable-length detections → fixed-size actor observation</li>
+    <li><code>RewardComponents</code> — pure functions sourced from <code>GroundTruthStateManager</code>: <code>exploration_reward</code>, <code>overlap_penalty</code>, <code>frontier_shaping_reward</code>, <code>collision_penalty</code>, <code>time_penalty</code>, plus optional vision-gated variants</li>
+    <li><code>TeamModule</code> — completion check, shared team bonus, triggers the global reset broadcast</li>
+    <li><code>RewardAggregator</code> — weighted sum per robot</li>
+    <li><code>ActorNetwork</code> — vision + proprioception in, action out; shared weights across robots; the only network that deploys</li>
+    <li><code>CriticNetwork</code> — privileged joint state in, value out; centralized; training-only, discarded at deployment</li>
+  </ul>
+</section>
+
+<section id="step-order">
+  <h2><span class="num">08</span>Per-step execution order</h2>
+  <pre><code>1. Actor(vision_obs) -> actions for all robots, batched across envs
+2. Physics step in Isaac Sim
+3. Render RTX camera frames per robot -> detector inference
+   (or pull Replicator ground-truth bboxes during the bootstrap phase)
+4. GroundTruthStateManager update: exact poses -> visited grid, occupancy
+   (independent of anything vision produced this step)
+5. RewardComponents computed from GroundTruthStateManager
+   (+ any deliberately vision-gated terms, using this step's detections)
+6. TeamModule.check_and_bonus()
+   -> on completion: reset visited grid + recently-visited buffer
+      + frontier assignment, together, in the same step
+7. RewardAggregator -> scalar reward per robot
+8. DetectionEncoder(detections) -> next actor observation
+   GroundTruthStateManager        -> next critic observation
+9. Store (actor_obs, critic_obs, action, reward) transition for the
+   PPO / MAPPO update</code></pre>
+</section>
+
+<section id="notes">
+  <h2><span class="num">09</span>Implementation notes</h2>
+  <ul>
+    <li><strong>Bootstrap with ground truth first.</strong> Validate the reward architecture using the Replicator bbox annotator before swapping in a real trained detector — this separates "does the reward design work" from "is the detector any good" as two independently debuggable questions.</li>
+    <li><strong>Decouple physics-Hz from perception-Hz.</strong> If detector inference can't keep pace with physics across hundreds of parallel envs, run vision + policy at a lower frequency and hold the last action between ticks.</li>
+    <li><strong>Randomize arena layouts per episode</strong> to prevent the reward function's privileged information from leaking into the deployed policy through memorized, deterministic layouts.</li>
+    <li><strong>Keep the reward/perception boundary explicit in code</strong> — two clearly separate manager classes. It's the easiest architectural line to blur once ground truth and vision live in the same step loop.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  Multi-robot exploration reward architecture — Isaac Sim &amp; vision-based revision.
+</footer>
+
+</body>
+</html>

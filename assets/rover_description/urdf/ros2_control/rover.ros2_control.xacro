@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<!-- rover.ros2_control.xacro -->
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ─────────── Arguments ─────────── -->
+  <xacro:arg name="prefix"    default="rover"/>
+  <xacro:arg name="use_sim_time"  default="false"/>
+  <xacro:arg name="world_name"    default="world"/>
+  <xacro:arg name="agent_ns"      default=""/>
+  <xacro:arg name="simulation_controllers_config_file" default=""/>
+  <xacro:arg name="ff_vel"   default="3.0"/>
+  <xacro:arg name="ff_accel" default="1.2"/>
+
+  <!-- ─────────── Static PID gains ─────────── -->
+  <xacro:property name="pos_kp"                 value="80.0"/>
+  <xacro:property name="pos_ki"                 value="0.0"/>
+  <xacro:property name="pos_kd"                 value="120.0"/>
+  <xacro:property name="pos_max_integral_error" value="1000.0"/>
+
+  <!-- ─────────── Helper macro for wheels ─────────── -->
+  <!-- This macro defines ros2_control interfaces for an EXISTING URDF joint -->
+  <xacro:macro name="wheel_joint" params="joint_name jmin jmax">
+    <joint name="${joint_name}">
+      <!-- PID (used by controllers that support it / rmw) -->
+      <param name="pos_kp">${pos_kp}</param>
+      <param name="pos_ki">${pos_ki}</param>
+      <param name="pos_kd">${pos_kd}</param>
+      <param name="pos_max_integral_error">${pos_max_integral_error}</param>
+
+      <!-- feed-forward (optional; ignored by some stacks) -->
+      <param name="ff_vel">${ff_vel}</param>
+      <param name="ff_accel">${ff_accel}</param>
+
+      <!-- interfaces -->
+      <command_interface name="effort">
+        <param name="min">${jmin}</param>
+        <param name="max">${jmax}</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- ─────────── Main ros2_control macro ─────────── -->
+  <xacro:macro name="rover_ros2_control"
+               params="prefix world_name agent_ns use_sim_time simulation_controllers_config_file ff_vel ff_accel">
+
+    <!-- resolve controller YAML path -->
+    <xacro:property name="controllers_yaml_path"
+      value="${(simulation_controllers_config_file != '') and simulation_controllers_config_file
+               or 'package://rover_gazebo/config/gazebo_rover_controllers.yaml'}"/>
+
+    <ros2_control name="RobotSystem" type="system" start_controllers="true">
+      <hardware>
+        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      </hardware>
+
+      <!-- wheel joints -->
+      <xacro:wheel_joint joint_name="${prefix}_base_to_FR" jmin="-999" jmax="999"/>
+      <xacro:wheel_joint joint_name="${prefix}_base_to_FL" jmin="-999" jmax="999"/>
+      <xacro:wheel_joint joint_name="${prefix}_base_to_RR" jmin="-999" jmax="999"/>
+      <xacro:wheel_joint joint_name="${prefix}_base_to_RL" jmin="-999" jmax="999"/>
+
+    </ros2_control>
+
+<gazebo>
+  <plugin filename="gz_ros2_control-system"
+          name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+    <!-- where to find the URDF on the parameter server -->
+    <robot_param>robot_description</robot_param>
+    <robot_param_node>robot_state_publisher</robot_param_node>
+
+    <!-- your controllers YAML -->
+    <parameters>${controllers_yaml_path}</parameters>
+
+    <!-- isolate per‑world/agent -->
+    <ros>
+      <namespace>/${world_name}/${agent_ns}</namespace>
+    </ros>
+
+    <controller_manager_name>controller_manager</controller_manager_name>
+  </plugin>
+</gazebo>
+
+  </xacro:macro>
+
+</robot>
+<!-- end of rover.ros2_control.xacro -->

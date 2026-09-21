@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<!-- rover.gazebo.xacro -->
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ─────────── Arguments ─────────── -->
+  <xacro:arg name="prefix"    default="rover"/>
+  <xacro:arg name="use_sim_time"  default="false"/>
+  <xacro:arg name="world_name"    default="world"/>
+  <xacro:arg name="agent_ns"      default=""/>
+  <xacro:arg name="add_sensors_plugin" default="false"/>
+
+<xacro:macro name="rover_gazebo"
+             params="prefix world_name agent_ns use_sim_time add_sensors_plugin:=false">
+
+  <gazebo>
+    <plugin filename="libgz-sim8-pose-publisher-system.so"
+            name="gz::sim::systems::PosePublisher">
+      <publish_link_pose>true</publish_link_pose>
+      <publish_model_pose>true</publish_model_pose>
+      <update_rate>30</update_rate>
+    </plugin>
+  </gazebo>
+
+  <xacro:if value="${add_sensors_plugin}">
+    <gazebo>
+      <plugin filename="libgz-sim-sensors-system.so"
+              name="gz::sim::systems::Sensors">
+        <render_engine>ogre2</render_engine>
+      </plugin>
+    </gazebo>
+  </xacro:if>
+
+<!-- Attach a camera sensor to the link "camera_link" via Gazebo Sim's Sensors system -->
+<gazebo reference="${prefix}_camera_link">
+  <sensor name="${prefix}_front_depth" type="rgbd_camera">
+    <pose>0.05 0 0 -1.5708 0 0</pose>
+    <!-- optional explicit topic (otherwise auto-generated) -->
+    <topic>/world/${world_name}/${agent_ns}/camera/depth_image</topic>
+
+    <update_rate>30</update_rate>
+    <always_on>true</always_on>
+    <visualize>true</visualize>
+
+    <camera>
+      <horizontal_fov>1.0471975512</horizontal_fov>
+      <image>
+        <width>640</width>
+        <height>480</height>
+      </image>
+      <clip>
+        <near>0.1</near>
+        <far>30.0</far>
+      </clip>
+    </camera>
+  </sensor>
+</gazebo>
+
+  </xacro:macro>
+
+</robot>
+<!-- end of rover.gazebo.xacro -->

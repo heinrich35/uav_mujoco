@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pond Replicator Data Collection Guide</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #f5f5f4;
+    padding: 1.5rem;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  h2 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  h3 { font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 1.5rem; }
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e3;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-sub { font-size: 12px; color: #777; margin-bottom: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .inner {
+    background: #f9f9f8;
+    border: 1px solid #e9e9e7;
+    border-radius: 7px;
+    padding: 0.75rem;
+  }
+  .inner h2 { font-size: 13px; margin-bottom: 6px; }
+  .mono {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 11px;
+    color: #444;
+    line-height: 1.9;
+  }
+  .mono .dir { color: #3b71ca; }
+  .mono .label { color: #e07b00; font-weight: 600; }
+  .mono .good { color: #198754; }
+  .mono .muted { color: #999; }
+  ul.steps { padding-left: 16px; }
+  ul.steps li { font-size: 12px; color: #555; line-height: 1.85; margin-bottom: 2px; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin: 0 3px 3px 0;
+  }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .badge-purple { background: #ede9fe; color: #4c1d95; }
+  .badge-gray { background: #f3f4f6; color: #374151; }
+  .mode-A { border-top: 3px solid #10b981; }
+  .mode-B { border-top: 3px solid #3b82f6; }
+  .mode-C { border-top: 3px solid #f59e0b; }
+  .mode-label { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .mode-sub { font-size: 11px; color: #777; margin-bottom: 8px; }
+  .mode-count { font-size: 11px; font-weight: 600; margin-top: 8px; }
+  .mode-A .mode-label { color: #065f46; }
+  .mode-A .mode-count { color: #065f46; }
+  .mode-B .mode-label { color: #1e40af; }
+  .mode-B .mode-count { color: #1e40af; }
+  .mode-C .mode-label { color: #92400e; }
+  .mode-C .mode-count { color: #92400e; }
+  .param-row {
+    display: grid;
+    grid-template-columns: 130px 180px 1fr;
+    gap: 8px;
+    align-items: start;
+    padding: 7px 10px;
+    border-radius: 5px;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .param-row:nth-child(odd) { background: #f9f9f8; }
+  .param-key { font-weight: 600; color: #111; }
+  .param-range { font-family: 'SF Mono', monospace; font-size: 11px; color: #444; }
+  .param-why { color: #666; }
+  .cat-cam { color: #1e40af; }
+  .cat-obj { color: #4c1d95; }
+  .cat-env { color: #92400e; }
+  .label-map {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .label-box {
+    border-radius: 7px;
+    padding: 8px 10px;
+  }
+  .label-box-fine { background: #ede9fe; }
+  .label-box-train { background: #dbeafe; }
+  .label-box h3 { font-size: 11px; margin-bottom: 5px; }
+  .label-box-fine h3 { color: #4c1d95; }
+  .label-box-train h3 { color: #1e40af; }
+  .verify-step {
+    border-left: 3px solid #d1d5db;
+    padding-left: 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #555;
+    line-height: 1.75;
+  }
+  .verify-step strong { color: #111; display: block; margin-bottom: 2px; }
+  .flow-box {
+    background: #f9f9f8;
+    border-radius: 7px;
+    padding: 10px 14px;
+    font-family: 'SF Mono', monospace;
+    font-size: 11px;
+    color: #555;
+    line-height: 2;
+  }
+  .occlusion-note {
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #78350f;
+    margin-top: 8px;
+  }
+  @media (max-width: 640px) {
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+    .param-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🦆 Gosling pond — Replicator data collection guide</h1>
+<p class="subtitle">What data to expect, how to structure the scene, three capture modes, and how to ensure correct labeling</p>
+
+<!-- SECTION 1: OUTPUT STRUCTURE -->
+<div class="card">
+  <div class="card-title">📁 Data output per captured frame</div>
+  <div class="card-sub">Replicator BasicWriter writes this folder structure for every rendered frame</div>
+  <div class="grid2">
+    <div class="inner">
+      <h2>🖼 Image files</h2>
+      <div class="mono">
+        <span class="dir">rgb/</span>rgb_0042.png<br>
+        <span class="dir">semantic_segmentation/</span><br>
+        &nbsp;&nbsp;semantic_segmentation_0042.png<br>
+        <span class="dir">instance_segmentation/</span><br>
+        &nbsp;&nbsp;instance_segmentation_0042.png<br>
+        <span class="dir">depth/</span>distance_to_image_plane_0042.npy
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:#666">
+        <div>• <strong>rgb</strong>: the raw camera image Gosling would see</div>
+        <div>• <strong>semantic seg</strong>: solid color per class — easy to verify labels visually</div>
+        <div>• <strong>instance seg</strong>: separate color per individual object instance</div>
+        <div>• <strong>depth</strong>: distance from camera to each pixel in meters</div>
+      </div>
+    </div>
+    <div class="inner">
+      <h2>📋 Annotation files</h2>
+      <div class="mono">
+        <span class="good">bounding_box_2d_tight/</span><br>
+        &nbsp;&nbsp;bounding_box_2d_tight_0042.npy<br>
+        <span class="good">bounding_box_2d_loose/</span><br>
+        &nbsp;&nbsp;bounding_box_2d_loose_0042.npy<br>
+        <span class="good">bounding_box_3d/</span><br>
+        &nbsp;&nbsp;bounding_box_3d_0042.npy<br>
+        <span class="good">camera_params/</span>camera_params_0042.json
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:#666">
+        <div>• <strong>tight bbox</strong>: pixel-exact box around visible parts only</div>
+        <div>• <strong>loose bbox</strong>: full object extent including occluded parts</div>
+        <div>• <strong>3D bbox</strong>: world-space oriented box (useful for depth training)</div>
+        <div>• <strong>camera_params</strong>: intrinsics, extrinsics, resolution</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="inner" style="margin-top:10px">
+    <h2>📄 Bounding box annotation content (per labeled object in frame)</h2>
+    <div class="mono">
+      { "semanticId": 1, "x_min": 120, "y_min": 80, "x_max": 210, "y_max": 165,<br>
+      &nbsp;&nbsp;"occlusion": 0.0, "truncation": 0.12, <span class="label">"label": "duck"</span>, "class": "duck" }<br>
+      <br>
+      { "semanticId": 2, "x_min": 340, "y_min": 120, "x_max": 490, "y_max": 220,<br>
+      &nbsp;&nbsp;"occlusion": 0.03, "truncation": 0.0, <span class="label">"label": "swan"</span>, "class": "swan" }<br>
+      <br>
+      { "semanticId": 3, "x_min": 55, "y_min": 180, "x_max": 130, "y_max": 230,<br>
+      &nbsp;&nbsp;"occlusion": 0.0, "truncation": 0.0, <span class="muted">"label": "other"</span>, "class": "other" }
+    </div>
+    <div class="occlusion-note">
+      ⚠ <strong>occlusion field is critical:</strong> filter out training frames where occlusion &gt; 0.6 for a target object — a heavily hidden duck produces a confusing label. Bounding boxes remain labeled even when the object is 90% hidden.
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: THREE MODES -->
+<div class="card">
+  <div class="card-title">🎬 Three capture modes — run all three</div>
+  <div class="card-sub">Do NOT run only one mode. You need isolated frames for the fine-grained Stage 2 classifier AND mixed scenes for Stage 1 detector. Each mode has a distinct training purpose.</div>
+
+  <div class="grid3">
+
+    <div class="inner mode-A">
+      <div class="mode-label">Mode A — isolated single object</div>
+      <div class="mode-sub">For Stage 2 fine-grained classifier (duck vs swan)</div>
+      <ul class="steps">
+        <li>✓ ONE duck OR one swan only in scene</li>
+        <li>✓ Empty water surface — no distractors</li>
+        <li>✓ Camera aimed directly at the object</li>
+        <li>✓ Full azimuth rotation around object</li>
+        <li>✓ Distance range: 1.5 – 8 m</li>
+        <li>✓ Max pose variation — all rotation angles</li>
+        <li>✗ No rock/log/lilypad/turtle present</li>
+      </ul>
+      <div class="mode-count">~2,000 duck + 2,000 swan frames</div>
+    </div>
+
+    <div class="inner mode-B">
+      <div class="mode-label">Mode B — full pond scene</div>
+      <div class="mode-sub">For Stage 1 detector training</div>
+      <ul class="steps">
+        <li>✓ 1–2 duck/swan placed randomly</li>
+        <li>✓ 3–6 distractors scattered on surface</li>
+        <li>✓ Partial occlusion between objects OK</li>
+        <li>✓ Camera at random angle and distance</li>
+        <li>✓ All classes present and labeled</li>
+        <li>✓ Crops from this mode also feed Stage 2</li>
+        <li>✓ Realistic robot navigation simulation</li>
+      </ul>
+      <div class="mode-count">~5,000 mixed pond scene frames</div>
+    </div>
+
+    <div class="inner mode-C">
+      <div class="mode-label">Mode C — distractor-only negatives</div>
+      <div class="mode-sub">For "other" class and anti-hallucination</div>
+      <ul class="steps">
+        <li>✗ NO duck or swan anywhere in scene</li>
+        <li>✓ 4–8 distractor objects scattered</li>
+        <li>✓ Include pure empty-water frames too</li>
+        <li>✓ All objects labeled "other"</li>
+        <li>✓ Camera at all angles and distances</li>
+        <li>✓ Prevents model hallucinating ducks</li>
+        <li>✓ Teaches what a "no-target" scene is</li>
+      </ul>
+      <div class="mode-count">~2,000 distractor-only frames</div>
+    </div>
+
+  </div>
+
+  <div class="flow-box" style="margin-top:12px">
+    Final dataset composition (total ~11,000 frames):<br>
+    Mode A — duck (2000) + swan (2000)  →  feeds Stage 2 classifier directly<br>
+    Mode B — mixed (5000)               →  feeds Stage 1 detector; Stage 2 also gets auto-cropped ROIs<br>
+    Mode C — negatives (2000)           →  feeds Stage 1 "other" class; trains anti-hallucination
+  </div>
+</div>
+
+<!-- SECTION 3: CAMERA SETUP -->
+<div class="card">
+  <div class="card-title">📷 Gosling camera setup in Replicator</div>
+  <div class="card-sub">The SDG camera must reproduce exactly what Gosling's camera sees on the water surface — same height, same tilt, same focal length</div>
+  <div class="grid2">
+    <div class="inner">
+      <h2>Fixed / match-Gosling parameters</h2>
+      <ul class="steps">
+        <li><strong>Height above water:</strong> match Gosling's real camera mount (approx 0.3 – 0.5 m)</li>
+        <li><strong>Tilt below horizon:</strong> 5° – 15° downward toward water surface</li>
+        <li><strong>Focal length:</strong> match Gosling's real camera exactly (e.g. 24mm)</li>
+        <li><strong>Resolution:</strong> match Gosling's sensor resolution exactly</li>
+        <li><strong>Camera position prim path:</strong> attach to /World/Gosling/camera_mount or spawn at (0, height, 0)</li>
+      </ul>
+    </div>
+    <div class="inner">
+      <h2>Randomized per frame</h2>
+      <ul class="steps">
+        <li><strong>Azimuth (yaw):</strong> 0° – 360° — simulates Gosling pointing in every direction</li>
+        <li><strong>Distance to target:</strong> 1.5 – 12 m — near vs far encounters</li>
+        <li><strong>Height jitter:</strong> ±0.08 m — small waves affect Gosling's body pitch</li>
+        <li><strong>Tilt jitter:</strong> ±4° — water surface movement</li>
+      </ul>
+    </div>
+  </div>
+  <div class="inner" style="margin-top:10px">
+    <h2>Replicator camera code pattern</h2>
+    <div class="mono">
+<span class="muted"># Camera anchored at Gosling position, looking at target object</span><br>
+camera = rep.create.camera(<br>
+&nbsp;&nbsp;position=(0, 0.4, 0),&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="muted"># 0.4m above fluid surface</span><br>
+&nbsp;&nbsp;focal_length=24.0,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="muted"># match Gosling's real lens</span><br>
+&nbsp;&nbsp;clipping_range=(0.1, 50.0),<br>
+)<br>
+<br>
+with rep.trigger.on_frame():<br>
+&nbsp;&nbsp;with camera:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;rep.modify.pose(<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;position=rep.distribution.uniform((-0.05, 0.3, -0.05), (0.05, 0.5, 0.05)),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="label">look_at="/World/Targets/current_target"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;)
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: RANDOMIZATION TABLE -->
+<div class="card">
+  <div class="card-title">🎲 All variation parameters to randomize</div>
+  <div class="card-sub">Every dimension you randomize is a shortcut the model cannot learn — domain randomization is what makes sim-trained models work in the real pond</div>
+
+  <div style="margin-bottom:8px;font-size:11px;color:#888">
+    <span class="badge badge-blue">● Camera</span>
+    <span class="badge badge-purple">● Objects</span>
+    <span class="badge badge-amber">● Environment</span>
+  </div>
+
+  <div class="param-row">
+    <div class="param-key cat-obj">Duck/swan position</div>
+    <div class="param-range">X,Z: uniform(−8, 8) m on fluid surface; Y = 0 (on water)</div>
+    <div class="param-why">Bird appears at every distance and bearing from Gosling</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-obj">Duck/swan yaw</div>
+    <div class="param-range">uniform(0°, 360°)</div>
+    <div class="param-why">Front, side, rear, and every angle between — essential for fine-grained features</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-obj">Duck/swan pitch</div>
+    <div class="param-range">uniform(−10°, 10°)</div>
+    <div class="param-why">Bird bobbing on water surface; slight head-up / head-down poses</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-obj">Object scale</div>
+    <div class="param-range">uniform(0.88, 1.12) — scale each axis independently or uniformly</div>
+    <div class="param-why">Handles variance in 3D asset size and apparent size at different distances</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-obj">Distractor positions</div>
+    <div class="param-range">Scatter uniformly across fluid surface; exclude a radius around duck/swan</div>
+    <div class="param-why">Distractors appear near and far, in all spatial relationships to targets</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-cam">Camera azimuth</div>
+    <div class="param-range">0° – 360° (look_at target, orbit around it)</div>
+    <div class="param-why">Simulates Gosling navigating to any heading on the pond</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-cam">Camera distance</div>
+    <div class="param-range">uniform(1.5 m, 12 m) from target</div>
+    <div class="param-why">Model sees object at small, medium, and large apparent sizes</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-cam">Camera height jitter</div>
+    <div class="param-range">uniform(0.3, 0.5) m above water; ±0.08 m noise</div>
+    <div class="param-why">Water wave motion slightly pitches Gosling's body</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-env">Sun/dome intensity</div>
+    <div class="param-range">uniform(200, 3500) lux; color temperature 3200–7000 K</div>
+    <div class="param-why">Dawn, noon, overcast, dusk — model sees bird in all lighting</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-env">Sun angle</div>
+    <div class="param-range">Azimuth 0–360°; Elevation 10°–80°</div>
+    <div class="param-why">Prevents model from using shadow direction as a class cue</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-env">HDR sky/dome</div>
+    <div class="param-range">Swap from pool: sunny, overcast, cloudy, misty, golden-hour</div>
+    <div class="param-why">Sky reflection on water changes drastically; model must ignore it</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-env">Water roughness</div>
+    <div class="param-range">uniform(0.0, 0.55) — calm to moderately choppy</div>
+    <div class="param-why">Water reflections / ripples change drastically around objects on the surface</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-env">Water color</div>
+    <div class="param-range">Hue slight variation; albedo ±15%</div>
+    <div class="param-why">Brown murky vs blue clear pond prevents colour-keying on water</div>
+  </div>
+  <div class="param-row">
+    <div class="param-key cat-env">Subframes</div>
+    <div class="param-range">2–4 RT subframes for path-traced quality</div>
+    <div class="param-why">Higher subframes = better material rendering, fewer noise artifacts</div>
+  </div>
+</div>
+
+<!-- SECTION 5: LABELING -->
+<div class="card">
+  <div class="card-title">🏷 Labeling — how to ensure correctness</div>
+  <div class="card-sub">Labels are assigned at the USD prim level before the script runs — the simulator guarantees pixel-perfect annotations at render time, with zero human error</div>
+
+  <div class="grid2" style="margin-bottom:10px">
+    <div class="inner">
+      <h2>Step 1 — assign semantic labels to each USD prim</h2>
+      <div class="mono">
+<span class="muted">from isaacsim.core.utils.semantics import add_labels</span><br>
+<br>
+<span class="muted"># Target objects — distinct labels</span><br>
+add_labels(duck_prim, labels=[<span class="label">"duck"</span>], taxonomy="class")<br>
+add_labels(swan_prim, labels=[<span class="label">"swan"</span>], taxonomy="class")<br>
+<br>
+<span class="muted"># Distractor objects — all get "other"</span><br>
+add_labels(rock_prim,&nbsp;&nbsp;&nbsp;labels=[<span class="muted">"other"</span>], taxonomy="class")<br>
+add_labels(log_prim,&nbsp;&nbsp;&nbsp;&nbsp;labels=[<span class="muted">"other"</span>], taxonomy="class")<br>
+add_labels(lilypad_prim, labels=[<span class="muted">"other"</span>], taxonomy="class")<br>
+add_labels(turtle_prim,  labels=[<span class="muted">"other"</span>], taxonomy="class")<br>
+<br>
+<span class="muted"># If you want fine-grained distractor labels too</span><br>
+<span class="muted"># (useful for debugging or future expansion):</span><br>
+add_labels(rock_prim, labels=[<span class="muted">"rock"</span>], taxonomy="class")
+      </div>
+    </div>
+    <div class="inner">
+      <h2>Step 2 — enable annotators in BasicWriter</h2>
+      <div class="mono">
+writer = rep.WriterRegistry.get(<span class="good">"BasicWriter"</span>)<br>
+writer.initialize(<br>
+&nbsp;&nbsp;output_dir=<span class="label">"./pond_dataset"</span>,<br>
+&nbsp;&nbsp;rgb=<span class="good">True</span>,<br>
+&nbsp;&nbsp;<span class="muted"># Primary label annotations</span><br>
+&nbsp;&nbsp;bounding_box_2d_tight=<span class="good">True</span>,&nbsp;&nbsp;&nbsp;&nbsp;<span class="muted"># for training</span><br>
+&nbsp;&nbsp;bounding_box_2d_loose=<span class="good">True</span>,&nbsp;&nbsp;&nbsp;&nbsp;<span class="muted"># for occlusion check</span><br>
+&nbsp;&nbsp;semantic_segmentation=<span class="good">True</span>,&nbsp;&nbsp;&nbsp;<span class="muted"># for visual verify</span><br>
+&nbsp;&nbsp;instance_segmentation=<span class="good">True</span>,&nbsp;&nbsp;&nbsp;<span class="muted"># per-instance masks</span><br>
+&nbsp;&nbsp;distance_to_image_plane=<span class="good">True</span>,<span class="muted"># depth for 3D</span><br>
+&nbsp;&nbsp;bounding_box_3d=<span class="good">True</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="muted"># 3D bbox optional</span><br>
+)
+      </div>
+    </div>
+  </div>
+
+  <h2 style="margin-bottom:8px">Step 3 — verify labels before running bulk generation</h2>
+  <div class="verify-step">
+    <strong>Visual check — semantic segmentation image</strong>
+    Inspect the semantic_segmentation PNG. Duck must be one solid color, swan a different solid color, each distractor a third color. If any object is black or background-colored, its semantic label was not applied correctly to the right prim path.
+  </div>
+  <div class="verify-step">
+    <strong>Bounding box overlay check</strong>
+    Render the bounding_box_2d_tight boxes on top of the RGB image. Boxes must be tight around the visible silhouette. If a box covers the entire image, the semantic was applied to the world root instead of the object prim. If boxes are missing, the prim path in add_labels() does not match the actual prim in the stage.
+  </div>
+  <div class="verify-step">
+    <strong>JSON content check</strong>
+    Inspect the bounding_box_2d_tight JSON. Confirm: "label" values are exactly "duck", "swan", "other" (no capitals, no spaces, no typos). Check "occlusion" is populated (0.0 = fully visible). For any frame where occlusion &gt; 0.6 for a target object, skip that frame during training data export.
+  </div>
+  <div class="verify-step">
+    <strong>Prim path strategy to avoid mislabeling</strong>
+    Give each object a clear prim path hierarchy: /World/Targets/Duck_01, /World/Targets/Swan_01, /World/Distractors/Rock_01. Apply add_labels() to the root prim of each asset (the Xform node, not a mesh child). Use check_missing_labels() to detect any unlabeled objects before capturing.
+  </div>
+
+  <div class="label-map">
+    <div class="label-box label-box-fine">
+      <h3>USD prim labels (fine-grained — keep these)</h3>
+      <div class="mono">
+"duck"&nbsp;&nbsp;&nbsp;→ duck<br>
+"swan"&nbsp;&nbsp;&nbsp;→ swan<br>
+"rock"&nbsp;&nbsp;&nbsp;→ rock<br>
+"log"&nbsp;&nbsp;&nbsp;&nbsp;→ log<br>
+"lilypad" → lilypad<br>
+"turtle"  → turtle
+      </div>
+    </div>
+    <div class="label-box label-box-train">
+      <h3>Training class mapping for Stage 1 detector</h3>
+      <div class="mono">
+"duck"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ class 0<br>
+"swan"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ class 1<br>
+"rock","log","lilypad",<br>
+"turtle","other" → class 2 "other"
+      </div>
+      <div style="font-size:11px;color:#1e40af;margin-top:6px">Keep fine-grained labels on disk — collapse to 3 classes only in the YOLO conversion script, not in Replicator. This preserves future flexibility.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

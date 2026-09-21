@@ -1,0 +1,48 @@
+# This config file is used by ros2_control
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    # Declare your controllers here
+    panda_arm_controller:
+      type: panda_arm_controller/JointTrajectoryController
+    panda_hand_controller:
+      type: position_controllers/GripperActionController
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+# ARM CONTROLLER
+panda_arm_controller:
+  ros__parameters:
+    # The 'JointTrajectoryController' in position mode
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    joints:
+      - panda_joint1
+      - panda_joint2
+      - panda_joint3
+      - panda_joint4
+      - panda_joint5
+      - panda_joint6
+      - panda_joint7
+    allow_nonzero_velocity_at_trajectory_end: true
+
+# HAND CONTROLLER
+panda_hand_controller:
+  ros__parameters:
+    # Do NOT repeat 'type' here, it is already set above
+    # Just define the needed params such as the finger joints
+    joints:
+      - panda_finger_joint1
+      - panda_finger_joint2
+      
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    # Optional parameters (goal_tolerance, etc.) could go here
+

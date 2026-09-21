@@ -1,0 +1,351 @@
+
+(env_isaaclab) heinz@heinz:~/isaaclab_uav$ 
+  # Step 2 — Convert to YOLO format
+  python scripts/pond/convert_to_yolo.py \
+      --data_root outputs/training_data \
+      --out_root ./pond_yolo
+
+  # Step 3 — Train Stage 1 detector (two-phase)
+  python scripts/pond/train_stage1.py \
+      --data ./pond_yolo/pond.yaml \
+      --run_name pond_v1 \
+      --device 0
+ 
+
+  # Step 1 — Prepare Stage 2 dataset (crops from Mode A + Mode B)
+  python scripts/pond/prepare_stage2.py \
+      --mode_a outputs/training_data/mode_a_isolated \
+      --mode_b outputs/training_data/mode_b_mixed \
+      --out ./stage2_dataset
+
+  # Step 2 — Train Stage 2 classifier (duck vs swan fine-grained)
+  python scripts/pond/train_stage2.py --data ./stage2_dataset --run_name pond_s2_v1 --device 0
+POND → YOLO CONVERSION
+  Resolution: 640×480  max_occlusion: 0.6
+  Source: outputs/training_data
+
+  mode_a_isolated            3000 frames
+  mode_b_mixed               1000 frames
+  mode_c_negatives            956 frames
+
+  Total: 4956 frames
+  Labels:
+    duck      2598  (13.4%)
+    lilypad   4061  (21.0%)
+    log       3738  (19.3%)
+    rock      3145  (16.2%)
+    swan      2639  (13.6%)
+    turtle    3197  (16.5%)
+
+  Train: 3469  |  Val: 743  |  Test: 744
+  YOLO config → pond_yolo/pond.yaml
+
+✅ YOLO dataset ready at: pond_yolo
+   Next: yolo detect train data=pond_yolo/pond.yaml model=yolo11m.pt imgsz=640 flipud=0.0 mosaic=0.5
+
+============================================================
+STAGE 1 — Phase 1: frozen backbone (20 epochs)
+============================================================
+
+New https://pypi.org/project/ultralytics/8.4.87 available 😃 Update with 'pip install -U ultralytics'
+Ultralytics 8.4.84 🚀 Python-3.12.3 torch-2.10.0+cu128 CUDA:0 (NVIDIA GeForce RTX 5070 Ti, 15831MiB)
+engine/trainer: agnostic_nms=False, amp=True, angle=1.0, augment=False, auto_augment=randaugment, batch=8, bgr=0.0, box=7.5, cache=False, cfg=None, classes=None, close_mosaic=10, cls=0.5, cls_pw=0.0, compile=False, conf=None, copy_paste=0.05, copy_paste_mode=flip, cos_lr=True, cutmix=0.0, data=./pond_yolo/pond.yaml, degrees=0.0, deterministic=True, device=0, dfl=1.5, dis=6.0, distill_model=None, dnn=False, dropout=0.0, dynamic=False, embed=None, end2end=None, epochs=20, erasing=0.4, exist_ok=False, fliplr=0.5, flipud=0.0, format=torchscript, fraction=1.0, freeze=10, hsv_h=0.015, hsv_s=0.4, hsv_v=0.3, imgsz=640, iou=0.7, keras=False, kobj=1.0, line_width=None, lr0=0.001, lrf=0.01, mask_ratio=4, max_det=300, mixup=0.1, mode=train, model=yolo11m.pt, momentum=0.937, mosaic=0.5, multi_scale=0.0, name=pond_v1_phase1-4, nbs=64, nms=False, opset=None, optimize=False, optimizer=AdamW, overlap_mask=True, patience=25, perspective=0.0, plots=True, pose=12.0, pretrained=True, profile=False, project=runs/pond_stage1, quantize=None, rect=False, resume=False, retina_masks=False, rle=1.0, save=True, save_conf=False, save_crop=False, save_dir=/home/heinz/isaaclab_uav/runs/detect/runs/pond_stage1/pond_v1_phase1-4, save_frames=False, save_json=False, save_period=-1, save_txt=False, scale=0.5, seed=0, shear=0.0, show=False, show_boxes=True, show_conf=True, show_labels=True, simplify=True, single_cls=False, source=None, split=val, stream_buffer=False, task=detect, time=None, tracker=tracktrack.yaml, translate=0.1, val=True, verbose=True, vid_stride=1, visualize=False, warmup_bias_lr=0.1, warmup_epochs=5, warmup_momentum=0.8, weight_decay=0.0005, workers=8, workspace=None
+Overriding model.yaml nc=80 with nc=6
+
+                   from  n    params  module                                       arguments                     
+  0                  -1  1      1856  ultralytics.nn.modules.conv.Conv             [3, 64, 3, 2]                 
+  1                  -1  1     73984  ultralytics.nn.modules.conv.Conv             [64, 128, 3, 2]               
+  2                  -1  1    111872  ultralytics.nn.modules.block.C3k2            [128, 256, 1, True, 0.25]     
+  3                  -1  1    590336  ultralytics.nn.modules.conv.Conv             [256, 256, 3, 2]              
+  4                  -1  1    444928  ultralytics.nn.modules.block.C3k2            [256, 512, 1, True, 0.25]     
+  5                  -1  1   2360320  ultralytics.nn.modules.conv.Conv             [512, 512, 3, 2]              
+  6                  -1  1   1380352  ultralytics.nn.modules.block.C3k2            [512, 512, 1, True]           
+  7                  -1  1   2360320  ultralytics.nn.modules.conv.Conv             [512, 512, 3, 2]              
+  8                  -1  1   1380352  ultralytics.nn.modules.block.C3k2            [512, 512, 1, True]           
+  9                  -1  1    656896  ultralytics.nn.modules.block.SPPF            [512, 512, 5]                 
+ 10                  -1  1    990976  ultralytics.nn.modules.block.C2PSA           [512, 512, 1]                 
+ 11                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']          
+ 12             [-1, 6]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 13                  -1  1   1642496  ultralytics.nn.modules.block.C3k2            [1024, 512, 1, True]          
+ 14                  -1  1         0  torch.nn.modules.upsampling.Upsample         [None, 2, 'nearest']          
+ 15             [-1, 4]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 16                  -1  1    542720  ultralytics.nn.modules.block.C3k2            [1024, 256, 1, True]          
+ 17                  -1  1    590336  ultralytics.nn.modules.conv.Conv             [256, 256, 3, 2]              
+ 18            [-1, 13]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 19                  -1  1   1511424  ultralytics.nn.modules.block.C3k2            [768, 512, 1, True]           
+ 20                  -1  1   2360320  ultralytics.nn.modules.conv.Conv             [512, 512, 3, 2]              
+ 21            [-1, 10]  1         0  ultralytics.nn.modules.conv.Concat           [1]                           
+ 22                  -1  1   1642496  ultralytics.nn.modules.block.C3k2            [1024, 512, 1, True]          
+ 23        [16, 19, 22]  1   1415650  ultralytics.nn.modules.head.Detect           [6, 16, None, [256, 512, 512]]
+YOLO11m summary: 232 layers, 20,057,634 parameters, 20,057,618 gradients, 68.2 GFLOPs
+
+Transferred 643/649 items from pretrained weights
+Freezing layer 'model.0.conv.weight'
+Freezing layer 'model.0.bn.weight'
+Freezing layer 'model.0.bn.bias'
+Freezing layer 'model.1.conv.weight'
+Freezing layer 'model.1.bn.weight'
+Freezing layer 'model.1.bn.bias'
+Freezing layer 'model.2.cv1.conv.weight'
+Freezing layer 'model.2.cv1.bn.weight'
+Freezing layer 'model.2.cv1.bn.bias'
+Freezing layer 'model.2.cv2.conv.weight'
+Freezing layer 'model.2.cv2.bn.weight'
+Freezing layer 'model.2.cv2.bn.bias'
+Freezing layer 'model.2.m.0.cv1.conv.weight'
+Freezing layer 'model.2.m.0.cv1.bn.weight'
+Freezing layer 'model.2.m.0.cv1.bn.bias'
+Freezing layer 'model.2.m.0.cv2.conv.weight'
+Freezing layer 'model.2.m.0.cv2.bn.weight'
+Freezing layer 'model.2.m.0.cv2.bn.bias'
+Freezing layer 'model.2.m.0.cv3.conv.weight'
+Freezing layer 'model.2.m.0.cv3.bn.weight'
+Freezing layer 'model.2.m.0.cv3.bn.bias'
+Freezing layer 'model.2.m.0.m.0.cv1.conv.weight'
+Freezing layer 'model.2.m.0.m.0.cv1.bn.weight'
+Freezing layer 'model.2.m.0.m.0.cv1.bn.bias'
+Freezing layer 'model.2.m.0.m.0.cv2.conv.weight'
+Freezing layer 'model.2.m.0.m.0.cv2.bn.weight'
+Freezing layer 'model.2.m.0.m.0.cv2.bn.bias'
+Freezing layer 'model.2.m.0.m.1.cv1.conv.weight'
+Freezing layer 'model.2.m.0.m.1.cv1.bn.weight'
+Freezing layer 'model.2.m.0.m.1.cv1.bn.bias'
+Freezing layer 'model.2.m.0.m.1.cv2.conv.weight'
+Freezing layer 'model.2.m.0.m.1.cv2.bn.weight'
+Freezing layer 'model.2.m.0.m.1.cv2.bn.bias'
+Freezing layer 'model.3.conv.weight'
+Freezing layer 'model.3.bn.weight'
+Freezing layer 'model.3.bn.bias'
+Freezing layer 'model.4.cv1.conv.weight'
+Freezing layer 'model.4.cv1.bn.weight'
+Freezing layer 'model.4.cv1.bn.bias'
+Freezing layer 'model.4.cv2.conv.weight'
+Freezing layer 'model.4.cv2.bn.weight'
+Freezing layer 'model.4.cv2.bn.bias'
+Freezing layer 'model.4.m.0.cv1.conv.weight'
+Freezing layer 'model.4.m.0.cv1.bn.weight'
+Freezing layer 'model.4.m.0.cv1.bn.bias'
+Freezing layer 'model.4.m.0.cv2.conv.weight'
+Freezing layer 'model.4.m.0.cv2.bn.weight'
+Freezing layer 'model.4.m.0.cv2.bn.bias'
+Freezing layer 'model.4.m.0.cv3.conv.weight'
+Freezing layer 'model.4.m.0.cv3.bn.weight'
+Freezing layer 'model.4.m.0.cv3.bn.bias'
+Freezing layer 'model.4.m.0.m.0.cv1.conv.weight'
+Freezing layer 'model.4.m.0.m.0.cv1.bn.weight'
+Freezing layer 'model.4.m.0.m.0.cv1.bn.bias'
+Freezing layer 'model.4.m.0.m.0.cv2.conv.weight'
+Freezing layer 'model.4.m.0.m.0.cv2.bn.weight'
+Freezing layer 'model.4.m.0.m.0.cv2.bn.bias'
+Freezing layer 'model.4.m.0.m.1.cv1.conv.weight'
+Freezing layer 'model.4.m.0.m.1.cv1.bn.weight'
+Freezing layer 'model.4.m.0.m.1.cv1.bn.bias'
+Freezing layer 'model.4.m.0.m.1.cv2.conv.weight'
+Freezing layer 'model.4.m.0.m.1.cv2.bn.weight'
+Freezing layer 'model.4.m.0.m.1.cv2.bn.bias'
+Freezing layer 'model.5.conv.weight'
+Freezing layer 'model.5.bn.weight'
+Freezing layer 'model.5.bn.bias'
+Freezing layer 'model.6.cv1.conv.weight'
+Freezing layer 'model.6.cv1.bn.weight'
+Freezing layer 'model.6.cv1.bn.bias'
+Freezing layer 'model.6.cv2.conv.weight'
+Freezing layer 'model.6.cv2.bn.weight'
+Freezing layer 'model.6.cv2.bn.bias'
+Freezing layer 'model.6.m.0.cv1.conv.weight'
+Freezing layer 'model.6.m.0.cv1.bn.weight'
+Freezing layer 'model.6.m.0.cv1.bn.bias'
+Freezing layer 'model.6.m.0.cv2.conv.weight'
+Freezing layer 'model.6.m.0.cv2.bn.weight'
+Freezing layer 'model.6.m.0.cv2.bn.bias'
+Freezing layer 'model.6.m.0.cv3.conv.weight'
+Freezing layer 'model.6.m.0.cv3.bn.weight'
+Freezing layer 'model.6.m.0.cv3.bn.bias'
+Freezing layer 'model.6.m.0.m.0.cv1.conv.weight'
+Freezing layer 'model.6.m.0.m.0.cv1.bn.weight'
+Freezing layer 'model.6.m.0.m.0.cv1.bn.bias'
+Freezing layer 'model.6.m.0.m.0.cv2.conv.weight'
+Freezing layer 'model.6.m.0.m.0.cv2.bn.weight'
+Freezing layer 'model.6.m.0.m.0.cv2.bn.bias'
+Freezing layer 'model.6.m.0.m.1.cv1.conv.weight'
+Freezing layer 'model.6.m.0.m.1.cv1.bn.weight'
+Freezing layer 'model.6.m.0.m.1.cv1.bn.bias'
+Freezing layer 'model.6.m.0.m.1.cv2.conv.weight'
+Freezing layer 'model.6.m.0.m.1.cv2.bn.weight'
+Freezing layer 'model.6.m.0.m.1.cv2.bn.bias'
+Freezing layer 'model.7.conv.weight'
+Freezing layer 'model.7.bn.weight'
+Freezing layer 'model.7.bn.bias'
+Freezing layer 'model.8.cv1.conv.weight'
+Freezing layer 'model.8.cv1.bn.weight'
+Freezing layer 'model.8.cv1.bn.bias'
+Freezing layer 'model.8.cv2.conv.weight'
+Freezing layer 'model.8.cv2.bn.weight'
+Freezing layer 'model.8.cv2.bn.bias'
+Freezing layer 'model.8.m.0.cv1.conv.weight'
+Freezing layer 'model.8.m.0.cv1.bn.weight'
+Freezing layer 'model.8.m.0.cv1.bn.bias'
+Freezing layer 'model.8.m.0.cv2.conv.weight'
+Freezing layer 'model.8.m.0.cv2.bn.weight'
+Freezing layer 'model.8.m.0.cv2.bn.bias'
+Freezing layer 'model.8.m.0.cv3.conv.weight'
+Freezing layer 'model.8.m.0.cv3.bn.weight'
+Freezing layer 'model.8.m.0.cv3.bn.bias'
+Freezing layer 'model.8.m.0.m.0.cv1.conv.weight'
+Freezing layer 'model.8.m.0.m.0.cv1.bn.weight'
+Freezing layer 'model.8.m.0.m.0.cv1.bn.bias'
+Freezing layer 'model.8.m.0.m.0.cv2.conv.weight'
+Freezing layer 'model.8.m.0.m.0.cv2.bn.weight'
+Freezing layer 'model.8.m.0.m.0.cv2.bn.bias'
+Freezing layer 'model.8.m.0.m.1.cv1.conv.weight'
+Freezing layer 'model.8.m.0.m.1.cv1.bn.weight'
+Freezing layer 'model.8.m.0.m.1.cv1.bn.bias'
+Freezing layer 'model.8.m.0.m.1.cv2.conv.weight'
+Freezing layer 'model.8.m.0.m.1.cv2.bn.weight'
+Freezing layer 'model.8.m.0.m.1.cv2.bn.bias'
+Freezing layer 'model.9.cv1.conv.weight'
+Freezing layer 'model.9.cv1.bn.weight'
+Freezing layer 'model.9.cv1.bn.bias'
+Freezing layer 'model.9.cv2.conv.weight'
+Freezing layer 'model.9.cv2.bn.weight'
+Freezing layer 'model.9.cv2.bn.bias'
+Freezing layer 'model.23.dfl.conv.weight'
+AMP: running Automatic Mixed Precision (AMP) checks...
+AMP: checks passed ✅
+train: Fast image access ✅ (ping: 0.0±0.0 ms, read: 4459.2±1116.0 MB/s, size: 96.5 KB)
+train: Scanning /home/heinz/isaaclab_uav/pond_yolo/labels/train... 2862 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 2862/2862 5.9Kit/s 0.5s
+train: New cache created: /home/heinz/isaaclab_uav/pond_yolo/labels/train.cache
+val: Fast image access ✅ (ping: 0.0±0.0 ms, read: 4131.7±1884.2 MB/s, size: 140.0 KB)
+val: Scanning /home/heinz/isaaclab_uav/pond_yolo/labels/val... 1254 images, 0 backgrounds, 0 corrupt: 100% ━━━━━━━━━━━━ 1254/1254 3.7Kit/s 0.3s
+val: New cache created: /home/heinz/isaaclab_uav/pond_yolo/labels/val.cache
+optimizer: AdamW(lr=0.001, momentum=0.937) with parameter groups 106 weight(decay=0.0), 113 weight(decay=0.0005), 112 bias(decay=0.0)
+Plotting labels to /home/heinz/isaaclab_uav/runs/detect/runs/pond_stage1/pond_v1_phase1-4/labels.jpg... 
+Image sizes 640 train, 640 val
+Using 8 dataloader workers
+Logging results to /home/heinz/isaaclab_uav/runs/detect/runs/pond_stage1/pond_v1_phase1-4
+Starting training for 20 epochs...
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       1/20      2.05G     0.8247     0.8891     0.9329         30        640: 100% ━━━━━━━━━━━━ 358/358 13.5it/s 26.4s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 79/79 13.2it/s 6.0s
+                   all       1254       3617       0.91      0.831      0.883      0.663
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       2/20      2.62G     0.8149     0.6063     0.9416         11        640: 100% ━━━━━━━━━━━━ 358/358 19.5it/s 18.3s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 79/79 18.7it/s 4.2s
+                   all       1254       3617      0.922      0.838      0.897      0.684
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       3/20      2.64G     0.7775     0.5633     0.9286         12        640: 100% ━━━━━━━━━━━━ 358/358 20.0it/s 17.9s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 79/79 19.0it/s 4.2s
+                   all       1254       3617      0.923      0.856      0.901      0.716
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+       4/20      2.64G     0.7569     0.5311     0.9148         19        640: 100% ━━━━━━━━━━━━ 358/358 20.1it/s 17.8s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 79/79 18.8it/s 4.2s
+                   all       1254       3617      0.923      0.858      0.903      0.714
+
+                   all       1254       3617      0.967      0.924      0.936      0.823
+[...]
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+     98/100      5.07G     0.3866     0.2245     0.7953         37        640: 100% ━━━━━━━━━━━━ 358/358 13.3it/s 27.0s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 79/79 18.9it/s 4.2s
+                   all       1254       3617      0.968      0.923      0.936      0.823
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+     99/100      5.07G     0.3867     0.2236     0.7968          6        640: 100% ━━━━━━━━━━━━ 358/358 13.3it/s 27.0s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 79/79 18.9it/s 4.2s
+                   all       1254       3617      0.967      0.924      0.936      0.823
+
+      Epoch    GPU_mem   box_loss   cls_loss   dfl_loss  Instances       Size
+    100/100      5.07G     0.3823     0.2214     0.7956         21        640: 100% ━━━━━━━━━━━━ 358/358 13.3it/s 27.0s
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 79/79 18.9it/s 4.2s
+                   all       1254       3617      0.968      0.924      0.936      0.823
+
+100 epochs completed in 0.945 hours.
+Optimizer stripped from /home/heinz/isaaclab_uav/runs/detect/runs/pond_stage1/pond_v1_phase2-3/weights/last.pt, 40.5MB
+Optimizer stripped from /home/heinz/isaaclab_uav/runs/detect/runs/pond_stage1/pond_v1_phase2-3/weights/best.pt, 40.5MB
+
+Validating /home/heinz/isaaclab_uav/runs/detect/runs/pond_stage1/pond_v1_phase2-3/weights/best.pt...
+Ultralytics 8.4.84 🚀 Python-3.12.3 torch-2.10.0+cu128 CUDA:0 (NVIDIA GeForce RTX 5070 Ti, 15831MiB)
+YOLO11m summary (fused): 126 layers, 20,034,658 parameters, 0 gradients, 67.7 GFLOPs
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100% ━━━━━━━━━━━━ 79/79 19.4it/s 4.1s
+                   all       1254       3617      0.969      0.924      0.936      0.826
+                  duck        256        440      0.979      0.977      0.984      0.907
+                  swan        252        450      0.984      0.967      0.993       0.93
+                turtle        423        710      0.993      0.799      0.834      0.668
+               lilypad        409        746      0.972      0.954      0.959      0.854
+                   log        384        646      0.928      0.913      0.913      0.765
+                  rock        386        625      0.959      0.936      0.932      0.832
+Speed: 0.0ms preprocess, 1.8ms inference, 0.0ms loss, 0.5ms postprocess per image
+Results saved to /home/heinz/isaaclab_uav/runs/detect/runs/pond_stage1/pond_v1_phase2-3
+
+✅ Stage 1 training complete
+   Best weights → runs/detect/runs/pond_stage1/pond_v1_phase2/weights/best.pt
+
+   Evaluate:
+   yolo detect val data=./pond_yolo/pond.yaml model=runs/detect/runs/pond_stage1/pond_v1_phase2/weights/best.pt
+
+   Export for on-robot inference:
+   yolo export model=runs/detect/runs/pond_stage1/pond_v1_phase2/weights/best.pt format=engine half=True  # TensorRT
+── Stage 2 dataset preparation ──
+  Mode A source: outputs/training_data/mode_a_isolated
+  Mode B source: outputs/training_data/mode_b_mixed
+  Augmentation:  9× per Mode A image
+
+  [Mode A] 3000 source images × 9 aug = 27000 total
+           duck     500 source images
+           other    2000 source images
+           swan     500 source images
+  [Mode B] 10415 crops from 1000 frames
+           duck     2029
+           other    6314
+           swan     2072
+
+  Combined: 37415 images
+  duck      6529  ██████████
+  other    24314  ████████████████████████████████████████
+  swan      6572  ██████████
+
+  Stage 2 dataset → stage2_dataset
+    train  26189 images
+    val    5611 images
+    test   5615 images
+
+  Per-class:
+    train  duck: 4570  other: 17019  swan: 4600
+    val    duck: 979  other: 3647  swan: 985
+    test   duck: 980  other: 3648  swan: 987
+
+✅ Ready for Stage 2 training: python train_stage2.py --data ./stage2_dataset
+
+Device: cuda:0
+  Classes: ['duck', 'other', 'swan']
+  Train 26189  Val 5611  Test 5615
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+  Ep 005 | loss 2.5572 | val_acc 0.9979 | λ_con=1.100 ✅
+  Ep 010 | loss 2.3105 | val_acc 0.9986 | λ_con=1.000 ✅
+  Ep 015 | loss 2.0773 | val_acc 0.9988 | λ_con=0.900 ✅
+  Ep 020 | loss 1.8445 | val_acc 0.9980 | λ_con=0.800 
+  Ep 025 | loss 1.6132 | val_acc 0.9988 | λ_con=0.700 
+  Ep 030 | loss 1.3802 | val_acc 0.9989 | λ_con=0.600 ✅
+  Ep 035 | loss 1.1518 | val_acc 0.9988 | λ_con=0.500 
+  Ep 040 | loss 0.9209 | val_acc 0.9988 | λ_con=0.400 
+  Ep 045 | loss 0.6900 | val_acc 0.9989 | λ_con=0.300 
+  Ep 050 | loss 0.4604 | val_acc 0.9989 | λ_con=0.200 
+  Ep 055 | loss 0.2306 | val_acc 0.9989 | λ_con=0.100 
+  Ep 060 | loss 0.0002 | val_acc 0.9991 | λ_con=0.000 ✅
+
+── Test set evaluation (best checkpoint) ──────────────────────
+            duck    other     swan
+  duck         979        1        0 ❌
+  other          1     3647        0
+  swan           0 ❌        1      986
+
+  duck→swan swap : 0.0%   (target < 5%)
+  swan→duck swap : 0.0%   (target < 5%)
+
+  Test accuracy: 0.9995
+  Best weights → runs/pond_stage2/pond_s2_v1/best.pt
+
